@@ -7,16 +7,16 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.List;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Document(collation = "rooms")
+@Document(collection = "rooms")
 public class Room {
     @Id
     private String id;
     private String title;
-    List<String> members;
+    Set<String> membersUsernames;
 }

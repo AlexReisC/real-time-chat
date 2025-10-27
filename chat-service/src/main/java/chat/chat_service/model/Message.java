@@ -12,11 +12,10 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Document(collation = "messages")
+@Document(collection = "messages")
 public class Message {
     @Id
     private String id;
-    @DBRef
     private String roomId;
     private String sender;
     private String recipient;
