@@ -11,15 +11,15 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/topic");
+        config.enableSimpleBroker("/topic", "/queue");
         config.setApplicationDestinationPrefixes("/app"); // for controller endpoint
         config.setUserDestinationPrefix("/user"); // private messages
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws/chat")
-                .addInterceptors(new UserHandshakeInterceptor())// endpoint for ws connection
+        registry.addEndpoint("/ws/chat") // endpoint for connection websocket
+                .addInterceptors(new UserHandshakeInterceptor())
                 .setAllowedOrigins("*") // allows cors
                 .withSockJS();
     }
