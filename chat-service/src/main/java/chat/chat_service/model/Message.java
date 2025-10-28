@@ -8,6 +8,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,5 +22,5 @@ public class Message {
     private String sender;
     private String recipient;
     private String content;
-    private String timestamp;
+    private Instant timestamp;
 }
