@@ -2,6 +2,7 @@ package chat.chat_service.controller;
 
 import chat.chat_service.dto.ChatMessageDTO;
 import chat.chat_service.service.MessageService;
+import chat.chat_service.service.RoomService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -18,10 +19,13 @@ import java.time.Instant;
 @RequestMapping("/ws/chat")
 public class ChatController {
     private final MessageService messageService;
+    private final RoomService roomService;
+
     private static final Logger logger = LoggerFactory.getLogger(ChatController.class);
 
-    public ChatController(MessageService messageService, SimpMessagingTemplate messagingTemplate) {
+    public ChatController(MessageService messageService, SimpMessagingTemplate messagingTemplate, RoomService roomService) {
         this.messageService = messageService;
+        this.roomService = roomService;
     }
 
     @MessageMapping("/chat.addUser")
@@ -37,6 +41,7 @@ public class ChatController {
         String roomId = chatMessage.roomId();
         headerAccessor.getSessionAttributes().put("roomId", roomId);
 
+        roomService.addNewUser(roomId, username);
         logger.info("Usuário {} ({}) entrou na sala {}", username, userId, roomId);
 
         return new ChatMessageDTO(
