@@ -1,6 +1,8 @@
 package chat.chat_service.controller;
 
 import chat.chat_service.dto.ChatMessageDTO;
+import chat.chat_service.dto.UserNotificationDTO;
+import chat.chat_service.dto.UserNotificationResponseDTO;
 import chat.chat_service.service.MessageService;
 import chat.chat_service.service.RoomService;
 import org.slf4j.Logger;
@@ -30,7 +32,7 @@ public class ChatController {
 
     @MessageMapping("/chat.addUser")
     @SendTo("/topic/{roomId}")
-    public ChatMessageDTO addUser(@Payload ChatMessageDTO chatMessage, SimpMessageHeaderAccessor headerAccessor){
+    public UserNotificationResponseDTO addUser(@Payload UserNotificationDTO notificationDTO, SimpMessageHeaderAccessor headerAccessor){
         if (headerAccessor == null){
             throw new IllegalStateException("Atributos de sessão estão null ao adicionar usuário");
         }
@@ -38,16 +40,17 @@ public class ChatController {
         String userId = (String) headerAccessor.getSessionAttributes().get("userId");
         String username = (String) headerAccessor.getSessionAttributes().get("username");
 
-        String roomId = chatMessage.roomId();
+        String roomId = notificationDTO.roomId();
         headerAccessor.getSessionAttributes().put("roomId", roomId);
 
         roomService.addNewUser(roomId, username);
         logger.info("Usuário {} ({}) entrou na sala {}", username, userId, roomId);
 
-        return new ChatMessageDTO(
+        return new UserNotificationResponseDTO(
                 "JOIN",
-                roomId,
+                userId,
                 username,
+                roomId,
                 String.format("%s entrou na sala!", username),
                 Instant.now()
         );
