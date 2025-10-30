@@ -23,5 +23,6 @@ public class RoomService {
             throw new EntityAlreadyExistsException("Já existe um usuário com este username na sala.");
         }
         room.getMembersUsernames().add(username);
+        roomRepository.save(room);
     }
 }
