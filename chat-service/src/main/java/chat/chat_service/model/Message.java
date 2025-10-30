@@ -21,8 +21,9 @@ public class Message {
     private String id;
     @Indexed(name = "room_id")
     private String roomId;
-    private String sender;
-    private String recipient;
+    private String senderId;
+    private String senderUsername;
+    private String recipientId;
     private String content;
     private Instant timestamp;
 }
