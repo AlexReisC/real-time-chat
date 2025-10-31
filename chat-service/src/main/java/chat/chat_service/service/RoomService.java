@@ -17,6 +17,15 @@ public class RoomService {
         this.roomRepository = roomRepository;
     }
 
+    public Room createNewRoom(String title){
+        if (roomRepository.existsByTitle(title)) {
+            throw new EntityAlreadyExistsException("Já existe uma sala com o mesmo título");
+        }
+        Set<String> membersUsernames = new HashSet<>();
+        Room room = Room.builder().title(title).membersUsernames(membersUsernames).build();
+        return roomRepository.save(room);
+    }
+
     public void addNewUser(String roomId, String username){
         Room room = roomRepository.findById(roomId).orElseThrow(() -> new RoomNotFoundException("Sala não encontrada!"));
         if (room.getMembersUsernames().contains(username)){
