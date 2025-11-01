@@ -1,21 +1,29 @@
 package chat.chat_service.controller;
 
 import chat.chat_service.dto.ChatMessageDTO;
+import chat.chat_service.dto.ErroResponse;
 import chat.chat_service.dto.UserNotificationDTO;
 import chat.chat_service.dto.UserNotificationResponseDTO;
+import chat.chat_service.model.Message;
 import chat.chat_service.service.MessageService;
 import chat.chat_service.service.RoomService;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Controller
 @RequestMapping("/ws/chat")
@@ -55,4 +63,32 @@ public class ChatController {
                 Instant.now()
         );
     }
+
+    @MessageMapping("/chat.sendPublicMessage")
+    @SendTo("/topic/{roomId}")
+    public Message sendPublicMessage(@Valid @Payload ChatMessageDTO chatMessageDTO, SimpMessageHeaderAccessor headerAccessor){
+        String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
+        String senderUsername = (String) headerAccessor.getSessionAttributes().get("username");
+
+        logger.info("Mensagem recebida de {} na sala {}: {}", senderUsername, chatMessageDTO.roomId(), chatMessageDTO.content());
+
+        return messageService.saveMessage(chatMessageDTO, senderId, senderUsername);
+    }
+
+    @MessageExceptionHandler
+    @SendToUser("/queue/errors")
+    public ErroResponse handleValidationException(Exception exception) {
+        ErroResponse erroResponse = new ErroResponse(
+                "A mensagem não pode estar em branco ou superar 1024 caracteres",
+                List.of(exception.getMessage()),
+                HttpStatus.BAD_REQUEST.value(),
+                LocalDateTime.now()
+        );
+        logger.warn("Erro de validação ao processar mensagem: {}", exception.getMessage());
+
+        return erroResponse;
+    }
+
+
+
 }
