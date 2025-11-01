@@ -20,7 +20,7 @@ public class MessageService {
         this.roomRepository = roomRepository;
     }
 
-    public Message saveMessage(ChatMessageDTO messageDTO, String senderId, String senderUsername){
+    public Message savePublicMessage(ChatMessageDTO messageDTO, String senderId, String senderUsername){
         Message message = messageDTO.toEntity(senderId, senderUsername);
 
         if (!roomRepository.existsById(message.getRoomId())) {

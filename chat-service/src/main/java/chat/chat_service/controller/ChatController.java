@@ -72,7 +72,7 @@ public class ChatController {
 
         logger.info("Mensagem recebida de {} na sala {}: {}", senderUsername, chatMessageDTO.roomId(), chatMessageDTO.content());
 
-        return messageService.saveMessage(chatMessageDTO, senderId, senderUsername);
+        return messageService.savePublicMessage(chatMessageDTO, senderId, senderUsername);
     }
 
     @MessageExceptionHandler
