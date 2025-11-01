@@ -1,9 +1,6 @@
 package chat.chat_service.controller;
 
-import chat.chat_service.dto.ChatMessageDTO;
-import chat.chat_service.dto.ErroResponse;
-import chat.chat_service.dto.UserNotificationDTO;
-import chat.chat_service.dto.UserNotificationResponseDTO;
+import chat.chat_service.dto.*;
 import chat.chat_service.model.Message;
 import chat.chat_service.service.MessageService;
 import chat.chat_service.service.RoomService;
@@ -19,6 +16,7 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.time.Instant;
@@ -77,14 +75,19 @@ public class ChatController {
 
     @MessageExceptionHandler
     @SendToUser("/queue/errors")
-    public ErroResponse handleValidationException(Exception exception) {
+    public ErroResponse handleValidationException(MethodArgumentNotValidException exception) {
+        String errorMessage = exception.getBindingResult()
+                .getAllErrors()
+                .getFirst()
+                .getDefaultMessage();
+
         ErroResponse erroResponse = new ErroResponse(
-                "A mensagem não pode estar em branco ou superar 1024 caracteres",
-                List.of(exception.getMessage()),
+                errorMessage,
                 HttpStatus.BAD_REQUEST.value(),
                 LocalDateTime.now()
         );
-        logger.warn("Erro de validação ao processar mensagem: {}", exception.getMessage());
+
+        logger.warn("Erro de validação ao processar mensagem: {}", errorMessage);
 
         return erroResponse;
     }
