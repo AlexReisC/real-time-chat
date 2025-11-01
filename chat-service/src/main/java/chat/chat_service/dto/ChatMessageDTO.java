@@ -2,12 +2,19 @@ package chat.chat_service.dto;
 
 import chat.chat_service.model.Message;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 
 public record ChatMessageDTO(
+        @NotBlank(message = "O ID da sala é obrigatório")
         @JsonProperty("roomId") String roomId,
+
+        @NotBlank(message = "O conteúdo não pode estar em branco")
+        @Size(max = 1024, message = "A mensagem não pode exceder 1024 caracteres")
         @JsonProperty("content") String content,
+
         @JsonProperty("recipientId") String recipientId,
         @JsonProperty("timestamp") Instant timestamp
 ) {
