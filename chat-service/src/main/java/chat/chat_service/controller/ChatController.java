@@ -28,17 +28,19 @@ import java.util.List;
 public class ChatController {
     private final MessageService messageService;
     private final RoomService roomService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     private static final Logger logger = LoggerFactory.getLogger(ChatController.class);
 
     public ChatController(MessageService messageService, SimpMessagingTemplate messagingTemplate, RoomService roomService) {
         this.messageService = messageService;
         this.roomService = roomService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @MessageMapping("/chat.addUser")
     @SendTo("/topic/{roomId}")
-    public UserNotificationResponseDTO addUser(@Payload UserNotificationDTO notificationDTO, SimpMessageHeaderAccessor headerAccessor){
+    public UserNotificationResponseDTO addUser(@Valid @Payload UserNotificationDTO notificationDTO, SimpMessageHeaderAccessor headerAccessor){
         if (headerAccessor == null){
             throw new IllegalStateException("Atributos de sessão estão null ao adicionar usuário");
         }
@@ -62,7 +64,7 @@ public class ChatController {
         );
     }
 
-    @MessageMapping("/chat.sendPublicMessage")
+    @MessageMapping("/chat.sendPublic")
     @SendTo("/topic/{roomId}")
     public Message sendPublicMessage(@Valid @Payload ChatMessageDTO chatMessageDTO, SimpMessageHeaderAccessor headerAccessor){
         String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
@@ -92,6 +94,18 @@ public class ChatController {
         return erroResponse;
     }
 
+    @MessageMapping("/chat.sendPrivate")
+    public void sendPrivateMessage(@Valid @Payload PrivateMessageDTO messageDTO, SimpMessageHeaderAccessor headerAccessor) {
+        String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
+        String senderUsername = (String) headerAccessor.getSessionAttributes().get("username");
 
+        logger.info("Mensagem enviada de {} para {}", senderUsername, messageDTO.recipientId());
+
+        Message saved = messageService.savePrivateMessage(messageDTO, senderId, senderUsername);
+
+        messagingTemplate.convertAndSendToUser(saved.getRecipientId(), "/queue/private", saved);
+
+        messagingTemplate.convertAndSendToUser(senderId, "/queue/private", saved);
+    }
 
 }
