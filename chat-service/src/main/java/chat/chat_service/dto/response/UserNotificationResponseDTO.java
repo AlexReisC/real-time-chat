@@ -1,4 +1,4 @@
-package chat.chat_service.dto;
+package chat.chat_service.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

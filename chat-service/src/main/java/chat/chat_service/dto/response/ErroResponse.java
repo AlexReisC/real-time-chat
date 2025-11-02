@@ -1,7 +1,6 @@
-package chat.chat_service.dto;
+package chat.chat_service.dto.response;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 public record ErroResponse(
         String message,

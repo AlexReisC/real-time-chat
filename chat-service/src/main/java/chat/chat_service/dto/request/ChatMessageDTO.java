@@ -1,4 +1,4 @@
-package chat.chat_service.dto;
+package chat.chat_service.dto.request;
 
 import chat.chat_service.model.Message;
 import com.fasterxml.jackson.annotation.JsonProperty;

@@ -1,4 +1,4 @@
-package chat.chat_service.dto;
+package chat.chat_service.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;

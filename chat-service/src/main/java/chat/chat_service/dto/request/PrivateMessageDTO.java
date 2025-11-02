@@ -1,4 +1,4 @@
-package chat.chat_service.dto;
+package chat.chat_service.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
