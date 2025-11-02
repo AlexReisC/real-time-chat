@@ -40,7 +40,8 @@ public class ChatController {
 
     @MessageMapping("/chat.addUser")
     @SendTo("/topic/{roomId}")
-    public UserNotificationResponseDTO addUser(@Valid @Payload UserNotificationDTO notificationDTO, SimpMessageHeaderAccessor headerAccessor){
+    public UserNotificationResponseDTO addUser(@Valid @Payload UserNotificationDTO notificationDTO,
+                                               SimpMessageHeaderAccessor headerAccessor){
         if (headerAccessor == null){
             throw new IllegalStateException("Atributos de sessão estão null ao adicionar usuário");
         }
@@ -60,6 +61,25 @@ public class ChatController {
                 username,
                 roomId,
                 String.format("%s entrou na sala!", username),
+                Instant.now()
+        );
+    }
+
+    @MessageMapping("/chat.removeUser")
+    @SendTo("/topic/{roomId}")
+    public UserNotificationResponseDTO removeUser(@Valid @Payload UserNotificationDTO notificationDTO,
+                                                  SimpMessageHeaderAccessor headerAccessor) {
+        String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
+        String senderUsername = (String) headerAccessor.getSessionAttributes().get("username");
+
+        roomService.removeUser(notificationDTO.roomId(), senderUsername);
+        logger.info("Usuário {} ({}) saiu da sala {}", senderUsername, senderId, notificationDTO.roomId());
+        return new UserNotificationResponseDTO(
+                "LEAVE",
+                senderId,
+                senderUsername,
+                notificationDTO.roomId(),
+                senderUsername + " saiu da sala",
                 Instant.now()
         );
     }
@@ -107,5 +127,4 @@ public class ChatController {
 
         messagingTemplate.convertAndSendToUser(senderId, "/queue/private", saved);
     }
-
 }
