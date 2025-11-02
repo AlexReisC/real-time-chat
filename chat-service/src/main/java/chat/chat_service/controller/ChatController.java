@@ -1,6 +1,10 @@
 package chat.chat_service.controller;
 
-import chat.chat_service.dto.*;
+import chat.chat_service.dto.request.ChatMessageDTO;
+import chat.chat_service.dto.request.PrivateMessageDTO;
+import chat.chat_service.dto.request.UserNotificationDTO;
+import chat.chat_service.dto.response.ErroResponse;
+import chat.chat_service.dto.response.UserNotificationResponseDTO;
 import chat.chat_service.model.Message;
 import chat.chat_service.service.MessageService;
 import chat.chat_service.service.RoomService;
@@ -21,7 +25,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Controller
 @RequestMapping("/ws/chat")
@@ -39,7 +42,7 @@ public class ChatController {
     }
 
     @MessageMapping("/chat.addUser")
-    @SendTo("/topic/{roomId}")
+    @SendTo("/topic/rooms/{roomId}")
     public UserNotificationResponseDTO addUser(@Valid @Payload UserNotificationDTO notificationDTO,
                                                SimpMessageHeaderAccessor headerAccessor){
         if (headerAccessor == null){
@@ -66,7 +69,7 @@ public class ChatController {
     }
 
     @MessageMapping("/chat.removeUser")
-    @SendTo("/topic/{roomId}")
+    @SendTo("/topic/rooms/{roomId}")
     public UserNotificationResponseDTO removeUser(@Valid @Payload UserNotificationDTO notificationDTO,
                                                   SimpMessageHeaderAccessor headerAccessor) {
         String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
@@ -85,7 +88,7 @@ public class ChatController {
     }
 
     @MessageMapping("/chat.sendPublic")
-    @SendTo("/topic/{roomId}")
+    @SendTo("/topic/rooms/{roomId}")
     public Message sendPublicMessage(@Valid @Payload ChatMessageDTO chatMessageDTO, SimpMessageHeaderAccessor headerAccessor){
         String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
         String senderUsername = (String) headerAccessor.getSessionAttributes().get("username");
