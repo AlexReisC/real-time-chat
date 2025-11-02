@@ -1,14 +1,20 @@
 package chat.chat_service.service;
 
-import chat.chat_service.dto.ChatMessageDTO;
-import chat.chat_service.dto.PrivateMessageDTO;
+import chat.chat_service.dto.request.ChatMessageDTO;
+import chat.chat_service.dto.request.PrivateMessageDTO;
+import chat.chat_service.dto.response.PageResponseDTO;
+import chat.chat_service.dto.response.ResponseMessageDTO;
 import chat.chat_service.exception.RoomNotFoundException;
 import chat.chat_service.model.Message;
 import chat.chat_service.repository.MessageRepository;
 import chat.chat_service.repository.RoomRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class MessageService {
@@ -41,5 +47,33 @@ public class MessageService {
                 .build();
 
         return messageRepository.save(message);
+    }
+
+    public PageResponseDTO<Message> listAllMessages(String roomId, Pageable pageable) {
+        Page<Message> messagePage = messageRepository.findByRoomId(roomId, pageable);
+
+        List<Message> messageDTOList = messagePage.getContent().stream().toList();
+
+        return new PageResponseDTO<>(
+                messageDTOList,
+                messagePage.getNumber(),
+                messagePage.getTotalPages(),
+                messagePage.getTotalElements(),
+                messagePage.getSize()
+        );
+    }
+
+    public PageResponseDTO<Message> listAllPrivateMessages(String senderId, String recipientId, Pageable pageable) {
+        Page<Message> messagePage = messageRepository.findPrivateConversation(senderId, recipientId, pageable);
+
+        List<Message> messageDTOList = messagePage.getContent().stream().toList();
+
+        return new PageResponseDTO<>(
+                messageDTOList,
+                messagePage.getNumber(),
+                messagePage.getTotalPages(),
+                messagePage.getTotalElements(),
+                messagePage.getSize()
+        );
     }
 }
