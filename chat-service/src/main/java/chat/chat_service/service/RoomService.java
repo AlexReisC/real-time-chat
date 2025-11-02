@@ -37,6 +37,9 @@ public class RoomService {
 
     public void removeUser(String roomId, String username) {
         Room room = roomRepository.findById(roomId).orElseThrow(() -> new RoomNotFoundException("Sala não encontrada"));
-        room.getMembersUsernames().removeIf(u -> u.equals(username));
+        boolean removed = room.getMembersUsernames().removeIf(u -> u.equals(username));
+        if (removed){
+            roomRepository.save(room);
+        }
     }
 }
