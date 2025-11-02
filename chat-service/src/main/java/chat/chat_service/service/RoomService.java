@@ -6,7 +6,9 @@ import chat.chat_service.model.Room;
 import chat.chat_service.repository.RoomRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -42,4 +44,15 @@ public class RoomService {
             roomRepository.save(room);
         }
     }
+
+    public List<Room> listAllRooms() {
+        return roomRepository.findAll();
+    }
+
+    public List<String> listAllMembersByRoom(String roomId) {
+        Room room = roomRepository.findById(roomId).orElseThrow(() -> new RoomNotFoundException("Sala não encontrada"));
+
+        return new ArrayList<>(room.getMembersUsernames());
+    }
+
 }
