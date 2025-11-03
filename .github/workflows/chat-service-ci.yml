@@ -1,17 +1,22 @@
-name: CI Java com Maven
+name: CI do Chat Service
 
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'chat-service/**'
+      - '.github/workflows/chat-service-ci.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'chat-service/**'
 
 jobs:
-  build-e-test:
+  build-e-test-chat-service:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up JDK 21 and Maven Cache
@@ -22,4 +27,5 @@ jobs:
           cache: 'maven'
 
       - name: Build and Test with Maven
-        run: mvn -B verify --file pom.xml
+        run: mvn -B verify
+        working-directory: ./chat-service
