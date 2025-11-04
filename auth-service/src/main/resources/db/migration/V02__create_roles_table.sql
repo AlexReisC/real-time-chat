@@ -1,0 +1,4 @@
+CREATE TABLE roles (
+    role_id DECIMAL PRIMARY KEY,
+    name VARCHAR(30) NOT NULL
+)
