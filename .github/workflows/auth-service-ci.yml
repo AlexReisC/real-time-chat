@@ -12,7 +12,7 @@ on:
       - 'auth-service/**'
 
 jobs:
-  build-e-test-auth-service:
+  build-and-test-auth-service:
     runs-on: ubuntu-latest
 
     steps:

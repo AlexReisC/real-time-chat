@@ -12,7 +12,7 @@ on:
       - 'chat-service/**'
 
 jobs:
-  build-e-test-chat-service:
+  build-and-test-chat-service:
     runs-on: ubuntu-latest
 
     steps:
