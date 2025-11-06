@@ -1,7 +1,9 @@
 package chat.auth_service.config;
 
 import chat.auth_service.repository.UserRepository;
+import chat.auth_service.service.UserServiceDetailsImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,14 +18,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Configuration
 @RequiredArgsConstructor
 public class ApplicationConfig {
-
-    private final UserRepository userRepository;
-
-    @Bean
-    public UserDetailsService userDetailsService() {
-        return username -> userRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado com o email: " + username));
-    }
+    @Autowired
+    private UserServiceDetailsImpl userServiceDetails;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -33,7 +29,7 @@ public class ApplicationConfig {
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService());
+        authProvider.setUserDetailsService(userServiceDetails);
         authProvider.setPasswordEncoder(passwordEncoder());
 
         return authProvider;
