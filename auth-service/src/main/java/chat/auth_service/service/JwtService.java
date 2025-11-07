@@ -1,5 +1,6 @@
 package chat.auth_service.service;
 
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.InvalidKeyException;
 import io.jsonwebtoken.security.Keys;
@@ -38,4 +39,16 @@ public class JwtService {
     }
 
 
+    public String getSubjectFromToken(String token){
+        try {
+            return Jwts.parser()
+                    .verifyWith(getSigninKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .getSubject();
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new JwtException("Erro ao analisar as claims. JWT inválido.");
+        }
+    }
 }
