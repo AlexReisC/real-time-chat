@@ -28,6 +28,11 @@ public class SecurityConfig {
     @Autowired
     private final UserServiceDetailsImpl userServiceDetails;
 
+    public static final String [] ENDPOINTS_WITH_AUTHENTICATION_NOT_REQUIRED = {
+            "/auth/login",
+            "/auth/register"
+    };
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
         return http
