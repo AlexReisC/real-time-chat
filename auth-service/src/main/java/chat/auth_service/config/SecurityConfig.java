@@ -1,6 +1,6 @@
 package chat.auth_service.config;
 
-import chat.auth_service.service.UserServiceDetailsImpl;
+import chat.auth_service.service.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -26,7 +26,7 @@ public class SecurityConfig {
     @Autowired
     private final JwtAuthFilter jwtAuthFilter;
     @Autowired
-    private final UserServiceDetailsImpl userServiceDetails;
+    private final UserDetailsServiceImpl userServiceDetails;
 
     public static final String [] ENDPOINTS_WITH_AUTHENTICATION_NOT_REQUIRED = {
             "/auth/login",
