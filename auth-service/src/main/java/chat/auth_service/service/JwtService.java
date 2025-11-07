@@ -23,7 +23,19 @@ public class JwtService {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
-
+    public String generateToken(String username) {
+        try {
+            return Jwts.builder()
+                    .issuer(ISSUER)
+                    .subject(username)
+                    .issuedAt(new Date())
+                    .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
+                    .signWith(getSigninKey())
+                    .compact();
+        } catch (InvalidKeyException e) {
+            throw new InvalidKeyException("Erro ao gerar token, erro na chave de assinatura.");
+        }
+    }
 
 
 }
