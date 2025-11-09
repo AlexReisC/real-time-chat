@@ -8,28 +8,24 @@ import chat.auth_service.dto.response.UserResponseDTO;
 import chat.auth_service.entity.User;
 import chat.auth_service.exception.EmailAlreadyExistsException;
 import chat.auth_service.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class AuthService {
-    @Autowired
-    private AuthenticationManager authenticationManager;
-    @Autowired
-    private JwtService jwtService;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private SecurityConfig securityConfig;
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public RecoveryTokenDTO authenticateUser(LoginUserDTO loginUserDTO) {
-        userRepository.findByEmail(loginUserDTO.email()).orElseThrow(() ->
-                new UsernameNotFoundException("Email não encontrado"));
-
         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                 loginUserDTO.email(),
                 loginUserDTO.password()
@@ -50,7 +46,7 @@ public class AuthService {
 
         User user = User.builder()
                 .email(createUserDTO.email())
-                .password(securityConfig.passwordEncoder().encode(createUserDTO.password()))
+                .password(passwordEncoder.encode(createUserDTO.password()))
                 .username(createUserDTO.username())
                 .build();
 
