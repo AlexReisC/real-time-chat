@@ -3,10 +3,12 @@ package chat.auth_service.service;
 import chat.auth_service.dto.request.LoginUserDTO;
 import chat.auth_service.dto.response.RecoveryTokenDTO;
 import chat.auth_service.entity.User;
+import chat.auth_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,8 +17,15 @@ public class AuthService {
     private AuthenticationManager authenticationManager;
     @Autowired
     private JwtService jwtService;
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private SecurityConfig securityConfig;
 
     public RecoveryTokenDTO authenticateUser(LoginUserDTO loginUserDTO) {
+        userRepository.findByEmail(loginUserDTO.email()).orElseThrow(() ->
+                new UsernameNotFoundException("Email não encontrado"));
+
         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                 loginUserDTO.email(),
                 loginUserDTO.password()
