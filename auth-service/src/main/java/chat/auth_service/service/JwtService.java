@@ -1,10 +1,12 @@
 package chat.auth_service.service;
 
+import chat.auth_service.entity.User;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.InvalidKeyException;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -24,11 +26,12 @@ public class JwtService {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
-    public String generateToken(String username) {
+    public String generateToken(User user) {
         try {
             return Jwts.builder()
                     .issuer(ISSUER)
-                    .subject(username)
+                    .subject(user.getUsername())
+                    .claim("userId", user.getId())
                     .issuedAt(new Date())
                     .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
                     .signWith(getSigninKey())
