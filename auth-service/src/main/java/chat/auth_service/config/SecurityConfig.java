@@ -29,8 +29,8 @@ public class SecurityConfig {
     private final UserDetailsServiceImpl userServiceDetails;
 
     public static final String [] ENDPOINTS_WITH_AUTHENTICATION_NOT_REQUIRED = {
-            "/auth/login",
-            "/auth/register"
+            "/api/v1/auth/login",
+            "/api/v1/auth/register"
     };
 
     @Bean
