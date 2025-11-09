@@ -54,4 +54,40 @@ public class JwtService {
             throw new JwtException("Erro ao analisar as claims. JWT inválido.");
         }
     }
+
+    public String getUserIdFromToken(String token) {
+        try {
+            return Jwts.parser()
+                    .verifyWith(getSigninKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .get("userId", String.class);
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new JwtException("Erro ao analisar as claims. JWT inválido.");
+        }
+    }
+
+    public Date getExpirationFromToken(String token) {
+        try {
+            return Jwts.parser()
+                    .verifyWith(getSigninKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .getExpiration();
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new JwtException("Erro ao analisar a data de expiração. JWT inválido.", e);
+        }
+    }
+
+    private Boolean isTokenExpired(String token) {
+        final Date expiration = getExpirationFromToken(token);
+        return expiration.before(new Date());
+    }
+
+    public Boolean isTokenValid(String token, UserDetails userDetails) {
+        final String usernameFromToken = getSubjectFromToken(token);
+        return (usernameFromToken.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
 }
