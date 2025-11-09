@@ -16,5 +16,16 @@ public class AuthService {
     @Autowired
     private JwtService jwtService;
 
+    public RecoveryTokenDTO authenticateUser(LoginUserDTO loginUserDTO) {
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                loginUserDTO.email(),
+                loginUserDTO.password()
+        );
 
+        Authentication authenticate = authenticationManager.authenticate(authenticationToken);
+
+        User user = (User) authenticate.getPrincipal();
+
+        return new RecoveryTokenDTO(jwtService.generateToken(user));
+    }
 }
