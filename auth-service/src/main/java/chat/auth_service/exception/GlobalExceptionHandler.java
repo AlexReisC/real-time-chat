@@ -46,7 +46,7 @@ public class GlobalExceptionHandler {
         erros.add(exception.getMessage());
 
         ErrorApiResponse erroApiResponse = new ErrorApiResponse(
-                "Dados de entrada inválidos",
+                "Credenciais do token inválidas",
                 erros,
                 LocalDateTime.now()
         );
