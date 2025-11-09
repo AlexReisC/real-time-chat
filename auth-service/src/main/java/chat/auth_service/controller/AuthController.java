@@ -29,4 +29,9 @@ public class AuthController {
         return ResponseEntity.ok(tokenDTO);
     }
 
+    @PostMapping("/register")
+    public ResponseEntity<UserResponseDTO> register(@Valid @RequestBody CreateUserDTO createUserDTO) {
+        UserResponseDTO responseDTO = authService.createUser(createUserDTO);
+        return ResponseEntity.created(URI.create("/auth/register")).body(responseDTO);
+    }
 }
