@@ -52,4 +52,17 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.badRequest().body(erroApiResponse);
     }
+
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    public ResponseEntity<ErrorApiResponse> handleEmailAlreadyExistsException(EmailAlreadyExistsException exception) {
+        List<String> erros = new ArrayList<>();
+        erros.add(exception.getMessage());
+
+        ErrorApiResponse erroApiResponse = new ErrorApiResponse(
+                "O email já está em uso",
+                erros,
+                LocalDateTime.now()
+        );
+        return ResponseEntity.badRequest().body(erroApiResponse);
+    }
 }
