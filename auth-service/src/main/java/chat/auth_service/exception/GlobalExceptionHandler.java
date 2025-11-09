@@ -3,6 +3,7 @@ package chat.auth_service.exception;
 import chat.auth_service.dto.response.ErrorApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -26,10 +27,23 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorApiResponse> handleValidationExceptions(MethodArgumentNotValidException exception) {
+    public ResponseEntity<ErrorApiResponse> handleValidationException(MethodArgumentNotValidException exception) {
         List<String> erros = new ArrayList<>();
         exception.getBindingResult()
                 .getFieldErrors().forEach(er -> erros.add(er.getField() + ": " + er.getDefaultMessage()));
+
+        ErrorApiResponse erroApiResponse = new ErrorApiResponse(
+                "Dados de entrada inválidos",
+                erros,
+                LocalDateTime.now()
+        );
+        return ResponseEntity.badRequest().body(erroApiResponse);
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorApiResponse> handleBadCredentialsException(BadCredentialsException exception) {
+        List<String> erros = new ArrayList<>();
+        erros.add(exception.getMessage());
 
         ErrorApiResponse erroApiResponse = new ErrorApiResponse(
                 "Dados de entrada inválidos",
