@@ -50,7 +50,7 @@ public class GlobalExceptionHandler {
                 erros,
                 LocalDateTime.now()
         );
-        return ResponseEntity.badRequest().body(erroApiResponse);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(erroApiResponse);
     }
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
