@@ -1,6 +1,7 @@
 package chat.auth_service.exception;
 
 import chat.auth_service.dto.response.ErrorApiResponse;
+import io.jsonwebtoken.JwtException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -73,6 +74,19 @@ public class GlobalExceptionHandler {
 
         ErrorApiResponse erroApiResponse = new ErrorApiResponse(
                 "Token não encontrado na requisição",
+                erros,
+                LocalDateTime.now()
+        );
+        return ResponseEntity.badRequest().body(erroApiResponse);
+    }
+
+    @ExceptionHandler(JwtException.class)
+    public ResponseEntity<ErrorApiResponse> handleJwtException(JwtException exception) {
+        List<String> erros = new ArrayList<>();
+        erros.add(exception.getMessage());
+
+        ErrorApiResponse erroApiResponse = new ErrorApiResponse(
+                "Token JWT inválido",
                 erros,
                 LocalDateTime.now()
         );
