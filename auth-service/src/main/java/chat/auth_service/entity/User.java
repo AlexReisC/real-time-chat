@@ -32,8 +32,7 @@ import lombok.NoArgsConstructor;
 public class User implements UserDetails{
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "user_id")
-    private UUID userId;
+    private UUID id;
 
     @Column(length = 50, nullable = false)
     private String username;
