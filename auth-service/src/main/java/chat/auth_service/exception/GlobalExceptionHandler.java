@@ -68,42 +68,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(erroApiResponse);
     }
 
-    @ExceptionHandler(MissingTokenException.class)
-    public ResponseEntity<ErrorApiResponse> handleMissingTokenException(MissingTokenException exception) {
-        List<String> erros = new ArrayList<>();
-        erros.add(exception.getMessage());
+    @ExceptionHandler({ JwtException.class, InvalidKeyException.class, MissingTokenException.class })
+    public ResponseEntity<ErrorApiResponse> handleAuthException(Exception exception) {
+        List<String> erros = List.of(exception.getMessage());
 
         ErrorApiResponse erroApiResponse = new ErrorApiResponse(
-                "Token não encontrado na requisição",
+                "Erro de autenticação ou token",
                 erros,
                 LocalDateTime.now()
         );
-        return ResponseEntity.badRequest().body(erroApiResponse);
-    }
-
-    @ExceptionHandler(JwtException.class)
-    public ResponseEntity<ErrorApiResponse> handleJwtException(JwtException exception) {
-        List<String> erros = new ArrayList<>();
-        erros.add(exception.getMessage());
-
-        ErrorApiResponse erroApiResponse = new ErrorApiResponse(
-                "Token JWT inválido",
-                erros,
-                LocalDateTime.now()
-        );
-        return ResponseEntity.internalServerError().body(erroApiResponse);
-    }
-
-    @ExceptionHandler(InvalidKeyException.class)
-    public ResponseEntity<ErrorApiResponse> handleInvalidKeyException(InvalidKeyException exception) {
-        List<String> erros = new ArrayList<>();
-        erros.add(exception.getMessage());
-
-        ErrorApiResponse erroApiResponse = new ErrorApiResponse(
-                "Erro na chave de assinatura",
-                erros,
-                LocalDateTime.now()
-        );
-        return ResponseEntity.internalServerError().body(erroApiResponse);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(erroApiResponse);
     }
 }
