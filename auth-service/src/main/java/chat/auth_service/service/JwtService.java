@@ -14,10 +14,10 @@ import java.util.Date;
 
 @Service
 public class JwtService {
-    @Value("${jwt.secret}")
+    @Value("${spring.security.jwt.token.secret}")
     private String jwtSecret;
 
-    @Value("${jwt.expiration}")
+    @Value("${spring.security.jwt.token.secret.expiration}")
     private long jwtExpirationMs;
 
     private static final String ISSUER = "auth-service";
