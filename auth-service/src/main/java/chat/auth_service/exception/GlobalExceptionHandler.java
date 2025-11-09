@@ -59,7 +59,20 @@ public class GlobalExceptionHandler {
         erros.add(exception.getMessage());
 
         ErrorApiResponse erroApiResponse = new ErrorApiResponse(
-                "O email já está em uso",
+                "O email inserido já está em uso",
+                erros,
+                LocalDateTime.now()
+        );
+        return ResponseEntity.badRequest().body(erroApiResponse);
+    }
+
+    @ExceptionHandler(MissingTokenException.class)
+    public ResponseEntity<ErrorApiResponse> handleMissingTokenException(MissingTokenException exception) {
+        List<String> erros = new ArrayList<>();
+        erros.add(exception.getMessage());
+
+        ErrorApiResponse erroApiResponse = new ErrorApiResponse(
+                "Token não encontrado na requisição",
                 erros,
                 LocalDateTime.now()
         );
