@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.security.InvalidKeyException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -90,6 +91,19 @@ public class GlobalExceptionHandler {
                 erros,
                 LocalDateTime.now()
         );
-        return ResponseEntity.badRequest().body(erroApiResponse);
+        return ResponseEntity.internalServerError().body(erroApiResponse);
+    }
+
+    @ExceptionHandler(InvalidKeyException.class)
+    public ResponseEntity<ErrorApiResponse> handleInvalidKeyException(InvalidKeyException exception) {
+        List<String> erros = new ArrayList<>();
+        erros.add(exception.getMessage());
+
+        ErrorApiResponse erroApiResponse = new ErrorApiResponse(
+                "Erro na chave de assinatura",
+                erros,
+                LocalDateTime.now()
+        );
+        return ResponseEntity.internalServerError().body(erroApiResponse);
     }
 }
