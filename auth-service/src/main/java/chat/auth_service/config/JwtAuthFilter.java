@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -27,17 +28,32 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        if (!checkIfEndpointIsPublic(request)) {
-            String recoveredToken = recoveryToken(request);
-            if (recoveredToken != null) {
-                String username = jwtService.getSubjectFromToken(recoveredToken);
-                User user = userDetailsService.loadUserByUsername(username);
+        final String recoveredToken = recoveryToken(request);
+        final String username;
 
-                Authentication authentication = new UsernamePasswordAuthenticationToken(user.getUsername(), user.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            } else {
-                throw new MissingTokenException("O token está ausente");
+        if (recoveredToken == null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        try {
+            username = jwtService.getSubjectFromToken(recoveredToken);
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                User userDetails = this.userDetailsService.loadUserByUsername(username);
+
+                if (jwtService.isTokenValid(recoveredToken, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
+                    );
+
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
             }
+        } catch (Exception e) {
+            logger.warn("Não foi possível processar o token JWT: " + e.getMessage());
         }
         filterChain.doFilter(request, response);
     }
@@ -48,10 +64,5 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return headerAuth.substring(7);
         }
         return null;
-    }
-
-    private boolean checkIfEndpointIsPublic(HttpServletRequest request) {
-        String requestURI = request.getRequestURI();
-        return Arrays.asList(SecurityConfig.ENDPOINTS_WITH_AUTHENTICATION_NOT_REQUIRED).contains(requestURI);
     }
 }
