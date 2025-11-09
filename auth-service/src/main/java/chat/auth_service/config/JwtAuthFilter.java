@@ -45,8 +45,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private String recoveryToken(HttpServletRequest request){
         String headerAuth = request.getHeader("Authorization");
-        if(headerAuth != null){
-            return headerAuth.replace("Bearer ", "");
+        if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
+            return headerAuth.substring(7);
         }
         return null;
     }
