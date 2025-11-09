@@ -1,4 +1,19 @@
 services:
+  postgres:
+    image: postgres:17
+    container_name: chat_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB_NAME: ${POSTGRES_DB_NAME}
+      POSTGRES_DB_USER: ${POSTGRES_DB_USER}
+      POSTGRES_DB_PASSWORD: ${POSTGRES_DB_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - chat_network
+
   chat-service:
     container_name: chat_service
     build:
@@ -63,6 +78,8 @@ volumes:
   mongodata:
     driver: local
   mongodb_config:
+    driver: local
+  postgres_data:
     driver: local
 
 networks:
