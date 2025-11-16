@@ -1,20 +1,19 @@
 package chat.chat_service.service;
 
-import chat.chat_service.dto.request.ChatMessageDTO;
-import chat.chat_service.dto.request.PrivateMessageDTO;
-import chat.chat_service.dto.response.PageResponseDTO;
-import chat.chat_service.dto.response.ResponseMessageDTO;
-import chat.chat_service.exception.RoomNotFoundException;
-import chat.chat_service.model.Message;
-import chat.chat_service.repository.MessageRepository;
-import chat.chat_service.repository.RoomRepository;
+import java.time.Instant;
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import chat.chat_service.dto.request.ChatMessageDTO;
+import chat.chat_service.dto.request.PrivateMessageDTO;
+import chat.chat_service.dto.response.PageResponseDTO;
+import chat.chat_service.exception.RoomNotFoundException;
+import chat.chat_service.model.Message;
+import chat.chat_service.repository.MessageRepository;
+import chat.chat_service.repository.RoomRepository;
 
 @Service
 public class MessageService {
