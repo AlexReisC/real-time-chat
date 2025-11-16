@@ -5,7 +5,7 @@ services:
       context: ./auth-service
       dockerfile: Dockerfile
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB_NAME}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_DB_HOST}:5432/${POSTGRES_DB_NAME}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
@@ -23,17 +23,17 @@ services:
     container_name: chat_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB_NAME: ${POSTGRES_DB_NAME}
-      POSTGRES_DB_USER: ${POSTGRES_DB_USER}
-      POSTGRES_DB_PASSWORD: ${POSTGRES_DB_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_DB_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_DB_PASSWORD}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${POSTGRES_DB_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - chat_network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h localhost" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_DB_USER} -d ${POSTGRES_DB_NAME} -h localhost" ]
       interval: 10s
       timeout: 5s
       retries: 5
