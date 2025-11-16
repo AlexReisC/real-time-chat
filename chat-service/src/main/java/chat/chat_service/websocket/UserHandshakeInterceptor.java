@@ -10,10 +10,18 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import chat.chat_service.security.JwtService;
+
 import java.util.Map;
 
 @Component
 public class UserHandshakeInterceptor implements HandshakeInterceptor {
+    private final JwtService jwtService;
+    
+    public UserHandshakeInterceptor(JwtService jwtService) {
+        this.jwtService = jwtService;
+    }
+
     private static final Logger logger = LoggerFactory.getLogger(UserHandshakeInterceptor.class);
 
     @Override
@@ -23,22 +31,29 @@ public class UserHandshakeInterceptor implements HandshakeInterceptor {
 
         if (request instanceof ServletServerHttpRequest servletRequest) {
             HttpServletRequest httpRequest = servletRequest.getServletRequest();
+            String token = httpRequest.getParameter("token");
 
-            String userId = httpRequest.getHeader("X-User-Id");
-            String username = httpRequest.getHeader("X-Username");
+            if (token != null && jwtService.isTokenValid(token)) {
+                String userId = jwtService.getUserIdFromToken(token);
+                String username = jwtService.getSubjectFromToken(token);
 
-            if (userId != null && username != null) {
+                if (userId == null || username == null) {
+                     logger.warn("Handshake rejeitado - Token válido, mas claims ausentes.");
+                     return false;
+                }
+
                 attributes.put("userId", userId);
                 attributes.put("username", username);
+                
                 logger.info("Handshake aceito - UserId: {}, Username: {}", userId, username);
                 return true;
+            } else {
+                logger.warn("Handshake rejeitado - Token ausente ou inválido.");
+                return false;
             }
-        } else {
-            logger.warn("Handshake rejeitado - Informações de usuário ausentes");
-            return false;
         }
 
-        logger.warn("Handshake rejeitado - Request inválido");
+        logger.warn("Handshake rejeitado - Request não é HTTP");
         return false;
     }
 
@@ -48,18 +63,7 @@ public class UserHandshakeInterceptor implements HandshakeInterceptor {
         if (exception != null) {
             logger.error("Erro durante o handshake: {}", exception.getMessage(), exception);
         } else {
-            logger.info("Handshake completado com sucesso");
-
-            // Aqui você pode fazer logs adicionais ou outras operações pós-handshake
-            if (request instanceof ServletServerHttpRequest servletRequest) {
-                HttpServletRequest httpRequest = servletRequest.getServletRequest();
-
-                String userId = httpRequest.getHeader("X-User-Id");
-                String username = httpRequest.getHeader("X-Username");
-
-                logger.info("Conexão WebSocket estabelecida - UserId: {}, Username: {}, IP: {}",
-                        userId, username, httpRequest.getRemoteAddr());
-            }
+            logger.info("Handshake completado com sucesso para a sessão.");
         }
     }
 }
