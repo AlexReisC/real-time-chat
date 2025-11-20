@@ -13,7 +13,7 @@ import io.jsonwebtoken.security.Keys;
 
 @Component
 public class JwtService {
-    @Value("${spring.security.jwt.token.secret}")
+    @Value("${jwt.secret}")
     private String jwtSecret;
 
     public SecretKey getSigninKey(){
