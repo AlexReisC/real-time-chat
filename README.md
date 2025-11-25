@@ -58,11 +58,11 @@ O sistema é composto pelos seguintes serviços:
 - Persistência de mensagens
 - Gerenciamento de presença de usuários
 
-### 4. Service Discovery - Eureka (Porta: 8084)
+### 4. Service Discovery - Eureka (Porta: 8761)
 - Registro e descoberta de serviços
 - Balanceamento de carga
 
-### 5. Config Server (Porta: 8085)
+### 5. Config Server (Porta: 8888)
 - Configurações centralizadas
 - Gestão de ambientes (dev/prod)
 
