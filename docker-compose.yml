@@ -104,9 +104,24 @@ services:
       mongodb:
         condition: service_healthy
       config-server:
-        condition: service_started
+        condition: service_healthy
       discovery-service:
-        condition: service_started
+        condition: service_healthy
+    networks:
+      - chat_network
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: api_gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
     networks:
       - chat_network
 
