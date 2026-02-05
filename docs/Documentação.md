@@ -151,6 +151,47 @@ chat/
      └─ RoomRepository.java
 ```
 
+### Auth Service
+```markdown
+auth/
+ ├─ config/
+ │   ├─ ApplicationConfig.java
+ │   ├─ SecurityConfig.java
+ │   └─ JwtAuthFilter.java
+ ├─ controller/
+ │   └─ AuthController.java
+ ├─ service/
+ │   ├─ AuthService.java
+ │   ├─ JwtService.java
+ │   └─ UserDetailsServiceImpl.java
+ ├─ dto/
+ │   ├─ request/
+ │   │   ├─ CreateUserDTO.java
+ │   │   └─ LoginUserDTO.java
+ │   └─ response/
+ │       ├─ ErrorApiResponse.java
+ │       ├─ RecoveryTokenDTO.java
+ │       └─ UserResponseDTO.java
+ ├─ entity/
+ │   └─ User.java
+ ├─ exception/
+ │   ├─ EmailAlreadyExistsException.java
+ │   ├─ GlobalExceptionHandler.java
+ │   └─ MissingTokenException.java
+ ├─ repository/
+ │   └─ UserRepository.java
+ ├─ service/
+ │   └─ AuthService.java
+ │   └─ JwtService.java
+ │   └─ UserDetailsServiceImpl.java
+ ├─ AuthServiceApplication.java
+ └─ resources/
+	├─ application.properties
+	└─ db
+		└─ migration
+			├─ V1__create_users_table.sql
+ ```
+
 > Os projetos dos demais serviços ainda não foram iniciados
 ## Funcionalidades básicas do usuário
 - Registro e Login (Autenticação e autorização com token JWT)
