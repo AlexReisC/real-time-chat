@@ -1,9 +1,9 @@
 services:
-  discovery-service:
+  service-discovery:
     build:
       context: ./eureka-server
       dockerfile: Dockerfile
-    container_name: discovery_service
+    container_name: service_discovery
     ports:
       - "${DISCOVERY_SERVICE_PORT}:${DISCOVERY_SERVICE_PORT}"
     networks:
@@ -31,7 +31,7 @@ services:
     networks:
       - chat_network
     depends_on:
-      discovery-service:
+      service-discovery:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8888/actuator/health | grep -q UP"]
@@ -51,7 +51,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION}
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-discovery:8761/eureka/
     ports:
       - "${AUTH_SERVICE_PORT}:${AUTH_SERVICE_PORT}"
     depends_on:
@@ -59,7 +59,7 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
-      discovery-service:
+      service-discovery:
         condition: service_healthy
     networks:
       - chat_network
@@ -97,7 +97,7 @@ services:
       SPRING_DATA_MONGODB_PASSWORD: ${MONGO_ROOT_PASSWORD}
       SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE: admin
       JWT_SECRET: ${JWT_SECRET}
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-discovery:8761/eureka/
     ports:
       - "${CHAT_SERVICE_PORT}:${CHAT_SERVICE_PORT}"
     depends_on:
@@ -105,7 +105,7 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
-      discovery-service:
+      service-discovery:
         condition: service_healthy
     networks:
       - chat_network
@@ -116,9 +116,9 @@ services:
     ports:
       - "8080:8080"
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-discovery:8761/eureka/
     depends_on:
-      discovery-service:
+      service-discovery:
         condition: service_healthy
       config-server:
         condition: service_healthy
