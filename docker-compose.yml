@@ -34,11 +34,11 @@ services:
       service-discovery:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8888/actuator/health | grep -q UP"]
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
       interval: 10s
       timeout: 5s
-      retries: 12
-      start_period: 30s
+      retries: 5
+      start_period: 10s
 
   auth-service:
     container_name: auth_service
