@@ -40,8 +40,8 @@ Componentes principais (serviços + infra):
 | Gateway       | 8080            |
 | Auth          | 8083            |
 | Chat          | 8082            |
-| Discovery     | 8084            |
-| Config        | 8085            |
+| Discovery     | 8761            |
+| Config        | 8888            |
 | PostgreSQL    | 5432 (default)  |
 | Mongo         | 27017 (defautl) |
 | Mongo-Express | 8081 (default)  |
