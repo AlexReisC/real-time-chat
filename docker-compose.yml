@@ -165,6 +165,20 @@ services:
     networks:
       - chat_network
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "${RABBITMQ_DEFAULT_PORT}:5672"
+      - "15672:15672"
+      - "${RELAY_PORT}:61613"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    command: sh -c "rabbitmq-plugins enable --offline rabbitmq_stomp && rabbitmq-server"
+    networks:
+      - chat_network
+
 volumes:
   mongodata:
     driver: local
