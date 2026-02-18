@@ -19,11 +19,19 @@ import lombok.NoArgsConstructor;
 public class Message {
     @Id
     private String id;
+    
     @Indexed(name = "room_id")
     private String roomId;
+
+    @Indexed
     private String senderId;
+    
     private String senderUsername;
+    
+    @Indexed
     private String recipientId;
+    
     private String content;
+    
     private Instant timestamp;
 }
