@@ -15,16 +15,16 @@ public record ChatMessageDTO(
         @Size(max = 1024, message = "A mensagem não pode exceder 1024 caracteres")
         @JsonProperty("content") String content,
 
-        @JsonProperty("recipientId") String recipientId,
-        @JsonProperty("timestamp") Instant timestamp
+        @JsonProperty("recipientId") String recipientId
 ) {
     public Message toEntity(String senderId, String senderUsername) {
         Message message = new Message();
+        message.setRoomId(this.roomId);
         message.setContent(this.content);
         message.setSenderId(senderId);
         message.setSenderUsername(senderUsername);
         message.setRecipientId(this.recipientId);
-        message.setTimestamp(this.timestamp);
+        message.setTimestamp(Instant.now());
         return message;
     }
 }
