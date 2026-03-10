@@ -6,6 +6,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -20,6 +22,7 @@ import chat.chat_service.model.Message;
 import chat.chat_service.model.MessageType;
 import chat.chat_service.repository.MessageRepository;
 import chat.chat_service.repository.RoomRepository;
+import io.lettuce.core.RedisException;
 
 @Service
 public class MessageService {
@@ -27,6 +30,7 @@ public class MessageService {
     private final RoomRepository roomRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private static final int MAX_CACHED_MESSAGES = 50;
+    private static final Logger logger = LoggerFactory.getLogger(MessageService.class);
 
     public MessageService(MessageRepository messageRepository, RoomRepository roomRepository, RedisTemplate<String, Object> redisTemplate) {
         this.messageRepository = messageRepository;
@@ -166,20 +170,24 @@ public class MessageService {
     public List<ResponseMessageDTO> getRecentRoomMessages(String roomId) {
         String cacheKey = "room:" + roomId + ":messages";
 
-        List<Object> cachedObjects = redisTemplate.opsForList().range(cacheKey, 0, -1);
+        try {
+            List<Object> cachedObjects = redisTemplate.opsForList().range(cacheKey, 0, -1);
 
-        if (cachedObjects != null && !cachedObjects.isEmpty()) {
-            return cachedObjects.stream()
-                    .map(obj -> {
-                        if (obj instanceof ResponseMessageDTO dto) {
-                            return dto;
-                        }
-                        if (obj instanceof Message msg) {
-                            return toResponseDTO(msg);
-                        }
-                        return (ResponseMessageDTO) obj;
-                    })
-                    .collect(Collectors.toList());
+            if (cachedObjects != null && !cachedObjects.isEmpty()) {
+                return cachedObjects.stream()
+                        .map(obj -> {
+                            if (obj instanceof ResponseMessageDTO dto) {
+                                return dto;
+                            }
+                            if (obj instanceof Message msg) {
+                                return toResponseDTO(msg);
+                            }
+                            return (ResponseMessageDTO) obj;
+                        })
+                        .collect(Collectors.toList());
+            }
+        } catch (RedisException e) {
+            logger.warn("Redis indisponível para mensagens de sala, buscando do MongoDB: {}", e.getMessage());
         }
 
         List<ResponseMessageDTO> messagesFromDb = messageRepository.findTop50ByRoomIdOrderByTimestampDesc(roomId).stream()
@@ -202,20 +210,24 @@ public class MessageService {
     public List<ResponseMessageDTO> getRecentPrivateMessages(String userId1, String userId2) {
         String privateConversationKey = getPrivateConversationKey(userId1, userId2);
 
-        List<Object> cachedObjects = redisTemplate.opsForList().range(privateConversationKey, 0, -1);
+        try {
+            List<Object> cachedObjects = redisTemplate.opsForList().range(privateConversationKey, 0, -1);
 
-        if (cachedObjects != null && !cachedObjects.isEmpty()) {
-            return cachedObjects.stream()
-                    .map(obj -> {
-                        if (obj instanceof ResponseMessageDTO dto) {
-                            return dto;
-                        }
-                        if (obj instanceof Message msg) {
-                            return toResponseDTO(msg);
-                        }
-                        return (ResponseMessageDTO) obj;
-                    })
-                    .collect(Collectors.toList());
+            if (cachedObjects != null && !cachedObjects.isEmpty()) {
+                return cachedObjects.stream()
+                        .map(obj -> {
+                            if (obj instanceof ResponseMessageDTO dto) {
+                                return dto;
+                            }
+                            if (obj instanceof Message msg) {
+                                return toResponseDTO(msg);
+                            }
+                            return (ResponseMessageDTO) obj;
+                        })
+                        .collect(Collectors.toList());
+            }
+        } catch (RedisException e) {
+            logger.warn("Redis indisponível para mensagens privadas, buscando do MongoDB: {}", e.getMessage());
         }
 
         List<ResponseMessageDTO> messagesFromDb = messageRepository.findTop50PrivateConversation(userId1, userId2).stream()
