@@ -48,4 +48,10 @@ public class MessageController {
         PageResponseDTO<ResponseMessageDTO> allPrivateMessages = messageService.listAllPrivateMessages(user1, user2, PageRequest.of(page, size, Sort.by(sortBy)));
         return ResponseEntity.ok(allPrivateMessages);
     }
+
+    @GetMapping("/room/{roomId}/messages")
+    public ResponseEntity<List<ResponseMessageDTO>> getRoomHistory(@PathVariable String roomId) {
+        List<ResponseMessageDTO> history = messageService.getRecentRoomMessages(roomId);
+        return ResponseEntity.ok(history);
+    }
 }

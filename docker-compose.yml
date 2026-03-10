@@ -98,6 +98,8 @@ services:
       SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE: admin
       JWT_SECRET: ${JWT_SECRET}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-discovery:8761/eureka/
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
     ports:
       - "${CHAT_SERVICE_PORT}:${CHAT_SERVICE_PORT}"
     depends_on:
@@ -176,6 +178,15 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     command: sh -c "rabbitmq-plugins enable --offline rabbitmq_stomp && rabbitmq-server"
+    networks:
+      - chat_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
     networks:
       - chat_network
 
