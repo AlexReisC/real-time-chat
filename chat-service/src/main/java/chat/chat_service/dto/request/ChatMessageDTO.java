@@ -1,11 +1,8 @@
 package chat.chat_service.dto.request;
 
-import chat.chat_service.model.Message;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-
-import java.time.Instant;
 
 public record ChatMessageDTO(
         @NotBlank(message = "O ID da sala é obrigatório")
@@ -17,14 +14,5 @@ public record ChatMessageDTO(
 
         @JsonProperty("recipientId") String recipientId
 ) {
-    public Message toEntity(String senderId, String senderUsername) {
-        Message message = new Message();
-        message.setRoomId(this.roomId);
-        message.setContent(this.content);
-        message.setSenderId(senderId);
-        message.setSenderUsername(senderUsername);
-        message.setRecipientId(this.recipientId);
-        message.setTimestamp(Instant.now());
-        return message;
-    }
+    
 }

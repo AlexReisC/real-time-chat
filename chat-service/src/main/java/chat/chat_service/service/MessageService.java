@@ -35,6 +35,17 @@ public class MessageService {
         return messageRepository.save(message);
     }
 
+    private Message toEntity(ChatMessageDTO messageDTO, String senderId, String senderUsername) {
+        Message message = new Message();
+        message.setRoomId(messageDTO.roomId());
+        message.setContent(messageDTO.content());
+        message.setSenderId(senderId);
+        message.setSenderUsername(senderUsername);
+        message.setRecipientId(messageDTO.recipientId());
+        message.setTimestamp(Instant.now());
+        return message;
+    }
+
     public Message savePrivateMessage(PrivateMessageDTO messageDTO, String senderId, String senderUsername) {
         Message message = Message.builder()
                 .senderId(senderId)
