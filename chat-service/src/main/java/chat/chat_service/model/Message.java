@@ -22,6 +22,8 @@ import lombok.NoArgsConstructor;
 public class Message {
     @Id
     private String id;
+
+    private MessageType type;
     
     @Field("room_id")
     private String roomId;

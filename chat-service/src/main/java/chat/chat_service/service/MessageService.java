@@ -13,6 +13,7 @@ import chat.chat_service.dto.response.PageResponseDTO;
 import chat.chat_service.dto.response.ResponseMessageDTO;
 import chat.chat_service.exception.RoomNotFoundException;
 import chat.chat_service.model.Message;
+import chat.chat_service.model.MessageType;
 import chat.chat_service.repository.MessageRepository;
 import chat.chat_service.repository.RoomRepository;
 
@@ -50,8 +51,9 @@ public class MessageService {
     private ResponseMessageDTO toResponseDTO(Message message) {
         return new ResponseMessageDTO(
                 message.getId(),
+                message.getType(),
                 message.getRoomId(),
-                message.getSenderUsername(),
+                message.getSenderId(),
                 message.getRecipientId(),
                 message.getContent(),
                 message.getTimestamp()
@@ -66,14 +68,16 @@ public class MessageService {
                 .content(messageDTO.content())
                 .timestamp(Instant.now())
                 .roomId(null)
+                .type(MessageType.PRIVATE)
                 .build();
 
         Message savedMessage = messageRepository.save(message);
 
         return new ResponseMessageDTO(
                 savedMessage.getId(),
+                savedMessage.getType(),
                 savedMessage.getRoomId(),
-                savedMessage.getSenderUsername(),
+                savedMessage.getSenderId(),
                 savedMessage.getRecipientId(),
                 savedMessage.getContent(),
                 savedMessage.getTimestamp()
