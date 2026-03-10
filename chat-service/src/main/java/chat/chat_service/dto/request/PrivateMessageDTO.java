@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record PrivateMessageDTO(
-        @JsonProperty("recipientId")
+        @JsonProperty("recipient_id")
         @NotBlank(message = "O ID do recipiente é obrigatório")
         String recipientId,
 

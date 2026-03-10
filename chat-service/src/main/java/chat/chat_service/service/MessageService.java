@@ -7,7 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import chat.chat_service.dto.request.ChatMessageDTO;
+import chat.chat_service.dto.request.PublicMessageDTO;
 import chat.chat_service.dto.request.PrivateMessageDTO;
 import chat.chat_service.dto.response.PageResponseDTO;
 import chat.chat_service.dto.response.ResponseMessageDTO;
@@ -27,8 +27,9 @@ public class MessageService {
         this.roomRepository = roomRepository;
     }
 
-    public Message savePublicMessage(ChatMessageDTO messageDTO, String senderId, String senderUsername){
-        Message message = messageDTO.toEntity(senderId, senderUsername);
+    public ResponseMessageDTO savePublicMessage(PublicMessageDTO messageDTO, String senderId, String senderUsername){
+        Message message = fromChatMessagetoEntity(messageDTO, senderId, senderUsername);
+        message.setType(MessageType.ROOM);
 
         if (!roomRepository.existsById(message.getRoomId())) {
             throw new RoomNotFoundException("Sala não encontrada!");

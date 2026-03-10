@@ -15,7 +15,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import chat.chat_service.dto.request.ChatMessageDTO;
+import chat.chat_service.dto.request.PublicMessageDTO;
 import chat.chat_service.dto.request.PrivateMessageDTO;
 import chat.chat_service.dto.request.UserNotificationDTO;
 import chat.chat_service.dto.response.ErrorResponse;
@@ -93,7 +93,7 @@ public class ChatController {
     }
 
     @MessageMapping("/chat.sendPublic")
-    public void sendPublicMessage(@Valid @Payload ChatMessageDTO chatMessageDTO, SimpMessageHeaderAccessor headerAccessor){
+    public void sendPublicMessage(@Valid @Payload PublicMessageDTO chatMessageDTO, SimpMessageHeaderAccessor headerAccessor){
         String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
         String senderUsername = (String) headerAccessor.getSessionAttributes().get("username");
 
