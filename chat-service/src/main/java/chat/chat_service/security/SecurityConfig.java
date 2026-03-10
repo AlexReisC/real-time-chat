@@ -1,7 +1,5 @@
 package chat.chat_service.security;
 
-import javax.crypto.SecretKey;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -10,7 +8,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 import lombok.RequiredArgsConstructor;
@@ -19,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    private final JwtService jwtService;
+    private final JwtDecoder jwtDecoder;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
@@ -36,11 +33,5 @@ public class SecurityConfig {
                     .jwt(Customizer.withDefaults())
                 )
                 .build();
-    }
-
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        SecretKey secretKey = jwtService.getSigninKey();
-        return NimbusJwtDecoder.withSecretKey(secretKey).build();
     }
 }

@@ -5,6 +5,9 @@ import javax.crypto.SecretKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.JwtException;
@@ -18,8 +21,14 @@ public class JwtService {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    public SecretKey getSigninKey(){
+    private SecretKey getSigninKey(){
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        SecretKey secretKey = getSigninKey();
+        return NimbusJwtDecoder.withSecretKey(secretKey).build();
     }
 
     public String getSubjectFromToken(String token){
