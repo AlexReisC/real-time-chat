@@ -1,10 +1,10 @@
 package chat.chat_service.dto.response;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
-public record ErroResponse(
+public record ErrorResponse(
         String message,
         Integer status,
-        LocalDateTime timestamp
+        Instant timestamp
 ) {
 }

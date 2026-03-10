@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import chat.chat_service.dto.request.ChatMessageDTO;
 import chat.chat_service.dto.request.PrivateMessageDTO;
 import chat.chat_service.dto.request.UserNotificationDTO;
-import chat.chat_service.dto.response.ErroResponse;
+import chat.chat_service.dto.response.ErrorResponse;
 import chat.chat_service.dto.response.UserNotificationResponseDTO;
 import chat.chat_service.model.Message;
 import chat.chat_service.service.MessageService;
@@ -105,13 +105,13 @@ public class ChatController {
 
     @MessageExceptionHandler
     @SendToUser("/queue/errors")
-    public ErroResponse handleValidationException(MethodArgumentNotValidException exception) {
+    public ErrorResponse handleValidationException(MethodArgumentNotValidException exception) {
         String errorMessage = exception.getBindingResult()
                 .getAllErrors()
                 .getFirst()
                 .getDefaultMessage();
 
-        ErroResponse erroResponse = new ErroResponse(
+        ErrorResponse erroResponse = new ErrorResponse(
                 errorMessage,
                 HttpStatus.BAD_REQUEST.value(),
                 LocalDateTime.now()
