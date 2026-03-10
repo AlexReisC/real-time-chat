@@ -38,5 +38,6 @@ public class Message {
     
     private String content;
     
+    @Indexed
     private Instant timestamp;
 }
