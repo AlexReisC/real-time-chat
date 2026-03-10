@@ -1,7 +1,6 @@
 package chat.chat_service.controller;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,7 +113,7 @@ public class ChatController {
         ErrorResponse erroResponse = new ErrorResponse(
                 errorMessage,
                 HttpStatus.BAD_REQUEST.value(),
-                LocalDateTime.now()
+                Instant.now()
         );
 
         logger.warn("Erro de validação ao processar mensagem: {}", errorMessage);

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.security.InvalidKeyException;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,7 +22,7 @@ public class GlobalExceptionHandler {
         ErrorApiResponse errorApiResponse = new ErrorApiResponse(
                 "Usuário não encontrado",
                 List.of(exception.getMessage()),
-                LocalDateTime.now()
+                Instant.now()
         );
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorApiResponse);
@@ -37,7 +37,7 @@ public class GlobalExceptionHandler {
         ErrorApiResponse erroApiResponse = new ErrorApiResponse(
                 "Dados de entrada inválidos",
                 erros,
-                LocalDateTime.now()
+                Instant.now()
         );
         return ResponseEntity.badRequest().body(erroApiResponse);
     }
@@ -50,7 +50,7 @@ public class GlobalExceptionHandler {
         ErrorApiResponse erroApiResponse = new ErrorApiResponse(
                 "Credenciais do token inválidas",
                 erros,
-                LocalDateTime.now()
+                Instant.now()
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(erroApiResponse);
     }
@@ -63,7 +63,7 @@ public class GlobalExceptionHandler {
         ErrorApiResponse erroApiResponse = new ErrorApiResponse(
                 "O email inserido já está em uso",
                 erros,
-                LocalDateTime.now()
+                Instant.now()
         );
         return ResponseEntity.badRequest().body(erroApiResponse);
     }
@@ -75,7 +75,7 @@ public class GlobalExceptionHandler {
         ErrorApiResponse erroApiResponse = new ErrorApiResponse(
                 "Erro de autenticação ou token",
                 erros,
-                LocalDateTime.now()
+                Instant.now()
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(erroApiResponse);
     }
