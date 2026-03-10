@@ -3,6 +3,7 @@ package chat.chat_service.model;
 import java.time.Instant;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -17,12 +18,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @Document(collection = "messages")
+@CompoundIndex(name = "room_timestamp_idx", def = "{'room_id': 1, 'timestamp': -1}")
 public class Message {
     @Id
     private String id;
     
     @Field("room_id")
-    @Indexed(name = "room_id")
     private String roomId;
 
     @Field("sender_id")
@@ -38,6 +39,5 @@ public class Message {
     
     private String content;
     
-    @Indexed
     private Instant timestamp;
 }
