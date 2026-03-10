@@ -1,9 +1,13 @@
 package chat.chat_service.service;
 
+import chat.chat_service.dto.response.PageResponseDTO;
 import chat.chat_service.exception.EntityAlreadyExistsException;
 import chat.chat_service.exception.RoomNotFoundException;
 import chat.chat_service.model.Room;
 import chat.chat_service.repository.RoomRepository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -45,14 +49,37 @@ public class RoomService {
         }
     }
 
-    public List<Room> listAllRooms() {
-        return roomRepository.findAll();
+    public PageResponseDTO<Room> listAllRooms(Pageable pageable) {
+        Page<Room> roomPage = roomRepository.findAll(pageable);
+        return new PageResponseDTO<>(
+                roomPage.getContent(),
+                roomPage.getNumber(),
+                roomPage.getTotalPages(),
+                roomPage.getTotalElements(),
+                roomPage.getSize()
+        );
     }
 
-    public List<String> listAllMembersByRoom(String roomId) {
-        Room room = roomRepository.findById(roomId).orElseThrow(() -> new RoomNotFoundException("Sala não encontrada"));
+    public PageResponseDTO<String> listAllMembersByRoom(String roomId, Pageable pageable) {
+        Room room = roomRepository.findById(roomId)
+            .orElseThrow(() -> new RoomNotFoundException("Sala não encontrada"));
 
-        return new ArrayList<>(room.getMembersIds());
+        List<String> membersList = new ArrayList<>(room.getMembersIds());
+        int total = membersList.size();
+        
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), total);
+        
+        List<String> pageContent = membersList.subList(start, end);
+        int totalPages = (int) Math.ceil((double) total / pageable.getPageSize());
+        
+        return new PageResponseDTO<>(
+            pageContent,
+            pageable.getPageNumber(),
+            totalPages,
+            total,
+            pageable.getPageSize()
+        );
     }
 
 }

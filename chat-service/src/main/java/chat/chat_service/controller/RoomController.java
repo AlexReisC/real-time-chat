@@ -1,15 +1,18 @@
 package chat.chat_service.controller;
 
 import chat.chat_service.dto.request.CreateRoomDTO;
+import chat.chat_service.dto.response.PageResponseDTO;
 import chat.chat_service.model.Room;
 import chat.chat_service.service.RoomService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/rooms")
@@ -27,14 +30,26 @@ public class RoomController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Room>> listAllRooms() {
-        List<Room> roomList = roomService.listAllRooms();
-        return ResponseEntity.ok(roomList);
+    public ResponseEntity<PageResponseDTO<Room>> listAllRooms(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(defaultValue = "title") String sortBy,
+        @RequestParam(defaultValue = "asc") String sortDir
+    ) {
+        Direction direction = "desc".equalsIgnoreCase(sortDir) ? Direction.DESC : Direction.ASC;
+        PageResponseDTO<Room> roomPage = roomService.listAllRooms(PageRequest.of(page, size, direction, sortBy));
+        return ResponseEntity.ok(roomPage);
     }
 
     @GetMapping("/{roomId}/members")
-    public ResponseEntity<List<String>> listAllMembers(@PathVariable @NotBlank(message = "O ID da sala é obrigatório") String roomId) {
-        List<String> members = roomService.listAllMembersByRoom(roomId);
-        return ResponseEntity.ok(members);
+    public ResponseEntity<PageResponseDTO<String>> listAllMembers(
+        @PathVariable @NotBlank(message = "O ID da sala é obrigatório") String roomId,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(defaultValue = "asc") String sortDir
+    ) {
+        Direction direction = "desc".equalsIgnoreCase(sortDir) ? Direction.DESC : Direction.ASC;
+        PageResponseDTO<String> membersPage = roomService.listAllMembersByRoom(roomId, PageRequest.of(page, size, direction));
+        return ResponseEntity.ok(membersPage);
     }
 }
