@@ -6,7 +6,7 @@ public record ResponseMessageDTO(
         String id,
         String roomId,
         String senderId,
-        String recipient,
+        String recipientId,
         String content,
         Instant timestamp
 ) {

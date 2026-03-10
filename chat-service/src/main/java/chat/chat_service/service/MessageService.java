@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import chat.chat_service.dto.request.ChatMessageDTO;
 import chat.chat_service.dto.request.PrivateMessageDTO;
 import chat.chat_service.dto.response.PageResponseDTO;
+import chat.chat_service.dto.response.ResponseMessageDTO;
 import chat.chat_service.exception.RoomNotFoundException;
 import chat.chat_service.model.Message;
 import chat.chat_service.repository.MessageRepository;
@@ -46,7 +47,18 @@ public class MessageService {
         return message;
     }
 
-    public Message savePrivateMessage(PrivateMessageDTO messageDTO, String senderId, String senderUsername) {
+    private ResponseMessageDTO toResponseDTO(Message message) {
+        return new ResponseMessageDTO(
+                message.getId(),
+                message.getRoomId(),
+                message.getSenderUsername(),
+                message.getRecipientId(),
+                message.getContent(),
+                message.getTimestamp()
+        );
+    }
+
+    public ResponseMessageDTO savePrivateMessage(PrivateMessageDTO messageDTO, String senderId, String senderUsername) {
         Message message = Message.builder()
                 .senderId(senderId)
                 .senderUsername(senderUsername)
@@ -56,13 +68,22 @@ public class MessageService {
                 .roomId(null)
                 .build();
 
-        return messageRepository.save(message);
+        Message savedMessage = messageRepository.save(message);
+
+        return new ResponseMessageDTO(
+                savedMessage.getId(),
+                savedMessage.getRoomId(),
+                savedMessage.getSenderUsername(),
+                savedMessage.getRecipientId(),
+                savedMessage.getContent(),
+                savedMessage.getTimestamp()
+        );
     }
 
-    public PageResponseDTO<Message> listAllMessages(String roomId, Pageable pageable) {
+    public PageResponseDTO<ResponseMessageDTO> listAllMessages(String roomId, Pageable pageable) {
         Page<Message> messagePage = messageRepository.findByRoomId(roomId, pageable);
 
-        List<Message> messageDTOList = messagePage.getContent().stream().toList();
+        List<ResponseMessageDTO> messageDTOList = messagePage.getContent().stream().map(this::toResponseDTO).toList();
 
         return new PageResponseDTO<>(
                 messageDTOList,
@@ -73,10 +94,10 @@ public class MessageService {
         );
     }
 
-    public PageResponseDTO<Message> listAllPrivateMessages(String senderId, String recipientId, Pageable pageable) {
+    public PageResponseDTO<ResponseMessageDTO> listAllPrivateMessages(String senderId, String recipientId, Pageable pageable) {
         Page<Message> messagePage = messageRepository.findPrivateConversation(senderId, recipientId, pageable);
 
-        List<Message> messageDTOList = messagePage.getContent().stream().toList();
+        List<ResponseMessageDTO> messageDTOList = messagePage.getContent().stream().map(this::toResponseDTO).toList();
 
         return new PageResponseDTO<>(
                 messageDTOList,

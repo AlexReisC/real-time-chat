@@ -19,8 +19,9 @@ import chat.chat_service.dto.request.ChatMessageDTO;
 import chat.chat_service.dto.request.PrivateMessageDTO;
 import chat.chat_service.dto.request.UserNotificationDTO;
 import chat.chat_service.dto.response.ErrorResponse;
+import chat.chat_service.dto.response.ResponseMessageDTO;
 import chat.chat_service.dto.response.UserNotificationResponseDTO;
-import chat.chat_service.model.Message;
+import chat.chat_service.model.NotificationType;
 import chat.chat_service.service.MessageService;
 import chat.chat_service.service.RoomService;
 import jakarta.validation.Valid;
@@ -57,7 +58,7 @@ public class ChatController {
         logger.info("Usuário {} ({}) entrou na sala {}", username, userId, roomId);
 
         UserNotificationResponseDTO response = new UserNotificationResponseDTO(
-                "JOIN",
+                NotificationType.JOIN,
                 userId,
                 username,
                 roomId,
@@ -80,7 +81,7 @@ public class ChatController {
         logger.info("Usuário {} ({}) saiu da sala {}", senderUsername, senderId, roomId);
         
         UserNotificationResponseDTO response = new UserNotificationResponseDTO(
-                "LEAVE",
+                NotificationType.LEAVE,
                 senderId,
                 senderUsername,
                 roomId,
@@ -98,7 +99,7 @@ public class ChatController {
 
         logger.info("Mensagem recebida de {} na sala {}: {}", senderUsername, chatMessageDTO.roomId(), chatMessageDTO.content());
 
-        Message savedMessage = messageService.savePublicMessage(chatMessageDTO, senderId, senderUsername);
+        ResponseMessageDTO savedMessage = messageService.savePublicMessage(chatMessageDTO, senderId, senderUsername);
         messagingTemplate.convertAndSend("/topic/rooms." + chatMessageDTO.roomId(), savedMessage);
     }
 
@@ -128,9 +129,9 @@ public class ChatController {
 
         logger.info("Mensagem enviada de {} para {}", senderUsername, messageDTO.recipientId());
 
-        Message saved = messageService.savePrivateMessage(messageDTO, senderId, senderUsername);
+        ResponseMessageDTO saved = messageService.savePrivateMessage(messageDTO, senderId, senderUsername);
 
-        messagingTemplate.convertAndSendToUser(saved.getRecipientId(), "/queue/private", saved);
+        messagingTemplate.convertAndSendToUser(saved.id(), "/queue/private", saved);
 
         messagingTemplate.convertAndSendToUser(senderId, "/queue/private", saved);
     }
