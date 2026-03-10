@@ -1,5 +1,6 @@
 package chat.chat_service.service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -51,13 +52,18 @@ public class MessageService {
                 savedMessage.getContent(),
                 savedMessage.getTimestamp()
         );
-        
-        String cacheKey = "room:" + message.getRoomId() + ":messages";
-        redisTemplate.opsForList().rightPush(cacheKey, savedDto);
-        redisTemplate.opsForList().trim(cacheKey, -MAX_CACHED_MESSAGES, -1);
+
+        cacheMessage(savedDto);
 
         return savedDto;
     }
+
+    private void cacheMessage(ResponseMessageDTO message) {
+        String cacheKey = "room:" + message.roomId() + ":messages";
+        redisTemplate.opsForList().rightPush(cacheKey, message);
+        redisTemplate.opsForList().trim(cacheKey, -MAX_CACHED_MESSAGES, -1);
+        redisTemplate.expire(cacheKey, Duration.ofDays(1));
+     }
 
     private Message fromChatMessagetoEntity(PublicMessageDTO messageDTO, String senderId, String senderUsername) {
         Message message = Message.builder()
