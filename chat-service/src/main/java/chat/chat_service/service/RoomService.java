@@ -8,7 +8,13 @@ import chat.chat_service.repository.RoomRepository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
+
+import com.mongodb.client.result.UpdateResult;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -18,9 +24,11 @@ import java.util.Set;
 @Service
 public class RoomService {
     private final RoomRepository roomRepository;
+    private final MongoTemplate mongoTemplate;;
 
-    public RoomService(RoomRepository roomRepository) {
+    public RoomService(RoomRepository roomRepository, MongoTemplate mongoTemplate) {
         this.roomRepository = roomRepository;
+        this.mongoTemplate = mongoTemplate;
     }
 
     public void existById(String roomId) {
@@ -30,28 +38,38 @@ public class RoomService {
     }
 
     public Room createNewRoom(String title){
-        if (roomRepository.existsByTitle(title)) {
+        Room existingRoom = mongoTemplate.findOne(Query.query(Criteria.where("title").is(title)), Room.class);
+        
+        if (existingRoom != null) {
             throw new EntityAlreadyExistsException("Já existe uma sala com o mesmo título");
         }
+        
         Set<String> membersIds = new HashSet<>();
         Room room = Room.builder().title(title).membersIds(membersIds).build();
-        return roomRepository.save(room);
+        return mongoTemplate.insert(room);
     }
 
     public void addNewUser(String roomId, String userId){
-        Room room = roomRepository.findById(roomId).orElseThrow(() -> new RoomNotFoundException("Sala não encontrada!"));
-        if (room.getMembersIds().contains(userId)){
-            throw new EntityAlreadyExistsException("Já existe um usuário com este ID na sala.");
+        mongoTemplate.updateFirst(
+            Query.query(Criteria.where("id").is(roomId).and("membersIds").ne(userId)),
+            new Update().addToSet("membersIds", userId),
+            Room.class
+        );
+
+        if (!roomRepository.existsById(roomId)) {
+            throw new RoomNotFoundException("Sala não encontrada");
         }
-        room.getMembersIds().add(userId);
-        roomRepository.save(room);
     }
 
     public void removeUser(String roomId, String userId) {
-        Room room = roomRepository.findById(roomId).orElseThrow(() -> new RoomNotFoundException("Sala não encontrada"));
-        boolean removed = room.getMembersIds().removeIf(u -> u.equals(userId));
-        if (removed){
-            roomRepository.save(room);
+        UpdateResult updateFirst = mongoTemplate.updateFirst(
+            Query.query(Criteria.where("id").is(roomId).and("membersIds").is(userId)),
+            new Update().pull("membersIds", userId),
+            Room.class
+        );
+
+        if (updateFirst.getMatchedCount() == 0) {
+            throw new RoomNotFoundException("Sala não encontrada ou usuário não é membro");
         }
     }
 

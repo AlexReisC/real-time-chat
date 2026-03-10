@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -163,83 +164,98 @@ public class MessageService {
         );
     }
 
+    private boolean acquireLock(String lockKey) {
+        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", Duration.ofSeconds(5)));
+    }
+
+    private void releaseLock(String lockKey) {
+        redisTemplate.delete(lockKey);
+    }
+
     public List<ResponseMessageDTO> getRecentRoomMessages(String roomId) {
         String cacheKey = "room:" + roomId + ":messages";
+        String lockKey = "lock:room:" + roomId;
 
-        try {
-            List<Object> cachedObjects = redisTemplate.opsForList().range(cacheKey, 0, -1);
-
-            if (cachedObjects != null && !cachedObjects.isEmpty()) {
-                return cachedObjects.stream()
-                        .map(obj -> {
-                            if (obj instanceof ResponseMessageDTO dto) {
-                                return dto;
-                            }
-                            if (obj instanceof Message msg) {
-                                return toResponseDTO(msg);
-                            }
-                            return (ResponseMessageDTO) obj;
-                        })
-                        .collect(Collectors.toList());
-            }
-        } catch (RedisException e) {
-            logger.warn("Redis indisponível para mensagens de sala, buscando do MongoDB: {}", e.getMessage());
-        }
-
-        List<ResponseMessageDTO> messagesFromDb = messageRepository.findTop50ByRoomIdOrderByTimestampDesc(roomId).stream()
+        return fetchMessagesWithLock(cacheKey, lockKey, () -> 
+            messageRepository.findTop50ByRoomIdOrderByTimestampDesc(roomId).stream()
                 .limit(MAX_CACHED_MESSAGES)
                 .map(this::toResponseDTO)
-                .collect(Collectors.toList());
-
-        Collections.reverse(messagesFromDb);
-
-        if (!messagesFromDb.isEmpty()) {
-            for (ResponseMessageDTO msg : messagesFromDb) {
-                redisTemplate.opsForList().rightPush(cacheKey, msg);
-            }
-            redisTemplate.expire(cacheKey, Duration.ofDays(1));
-        }
-
-        return messagesFromDb;
+                .collect(Collectors.toList())
+        );
     }
 
     public List<ResponseMessageDTO> getRecentPrivateMessages(String userId1, String userId2) {
         String privateConversationKey = getPrivateConversationKey(userId1, userId2);
+        String lockKey = "lock:" + privateConversationKey;
 
-        try {
-            List<Object> cachedObjects = redisTemplate.opsForList().range(privateConversationKey, 0, -1);
-
-            if (cachedObjects != null && !cachedObjects.isEmpty()) {
-                return cachedObjects.stream()
-                        .map(obj -> {
-                            if (obj instanceof ResponseMessageDTO dto) {
-                                return dto;
-                            }
-                            if (obj instanceof Message msg) {
-                                return toResponseDTO(msg);
-                            }
-                            return (ResponseMessageDTO) obj;
-                        })
-                        .collect(Collectors.toList());
-            }
-        } catch (RedisException e) {
-            logger.warn("Redis indisponível para mensagens privadas, buscando do MongoDB: {}", e.getMessage());
-        }
-
-        List<ResponseMessageDTO> messagesFromDb = messageRepository.findTop50PrivateConversation(userId1, userId2).stream()
+        return fetchMessagesWithLock(privateConversationKey, lockKey, () -> 
+            messageRepository.findTop50PrivateConversation(userId1, userId2).stream()
                 .limit(MAX_CACHED_MESSAGES)
                 .map(this::toResponseDTO)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList())
+        );
+    }
 
-        Collections.reverse(messagesFromDb);
-
-        if (!messagesFromDb.isEmpty()) {
-            for (ResponseMessageDTO msg : messagesFromDb) {
-                redisTemplate.opsForList().rightPush(privateConversationKey, msg);
+    private List<ResponseMessageDTO> fetchMessagesWithLock(String cacheKey, String lockKey, Supplier<List<ResponseMessageDTO>> dbSupplier) {
+        int retries = 3; // Tenta ler do cache 3 vezes antes de desistir
+        
+        while (retries > 0) {
+            try {
+                List<Object> cachedObjects = redisTemplate.opsForList().range(cacheKey, 0, -1);
+                if (cachedObjects != null && !cachedObjects.isEmpty()) {
+                    return cachedObjects.stream()
+                            .map(obj -> {
+                                if (obj instanceof ResponseMessageDTO dto) return dto;
+                                if (obj instanceof Message msg) return toResponseDTO(msg);
+                                return (ResponseMessageDTO) obj;
+                            })
+                            .collect(Collectors.toList());
+                }
+            } catch (RedisException e) {
+                logger.warn("Redis indisponível, buscando do MongoDB: {}", e.getMessage());
+                break;
             }
-            redisTemplate.expire(privateConversationKey, Duration.ofDays(1));
+
+            // 2. CACHE MISS: TENTA ADQUIRIR O LOCK
+            if (acquireLock(lockKey)) {
+                try {
+                    // Double-check: garante que outra thread não repovoou enquanto adquiríamos o lock
+                    List<Object> doubleCheckCache = redisTemplate.opsForList().range(cacheKey, 0, -1);
+                    if (doubleCheckCache != null && !doubleCheckCache.isEmpty()) {
+                        continue; // Volta ao início do loop para ler o cache repovoado
+                    }
+
+                    // VENCEDORA: Busca do MongoDB
+                    List<ResponseMessageDTO> messagesFromDb = dbSupplier.get();
+                    Collections.reverse(messagesFromDb);
+
+                    // Repovoa o cache
+                    if (!messagesFromDb.isEmpty()) {
+                        for (ResponseMessageDTO msg : messagesFromDb) {
+                            redisTemplate.opsForList().rightPush(cacheKey, msg);
+                        }
+                        redisTemplate.expire(cacheKey, Duration.ofDays(1));
+                    }
+                    return messagesFromDb;
+
+                } finally {
+                    // SEMPRE liberta o lock no finally para evitar deadlocks
+                    releaseLock(lockKey);
+                }
+            } else {
+                // PERDEDORA: Outra thread está repovoando o cache. Espera 100ms e tenta novamente.
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                retries--;
+            }
         }
 
-        return messagesFromDb;
+        // FALLBACK DE SEGURANÇA (Se os retries acabarem ou o Redis cair)
+        List<ResponseMessageDTO> fallbackMessages = dbSupplier.get();
+        Collections.reverse(fallbackMessages);
+        return fallbackMessages;
     }
 }
