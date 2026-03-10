@@ -60,13 +60,27 @@ public class MessageService {
 
     private void cacheMessage(ResponseMessageDTO message) {
         String cacheKey = "room:" + message.roomId() + ":messages";
+        
+        if (message.type() != MessageType.ROOM || message.roomId() == null) {
+            String privateConversationKey = getPrivateConversationKey(message.senderId(), message.recipientId());
+            cacheKey = cacheKey.replace("room:", privateConversationKey);
+        }
+        
         redisTemplate.opsForList().rightPush(cacheKey, message);
         redisTemplate.opsForList().trim(cacheKey, -MAX_CACHED_MESSAGES, -1);
         redisTemplate.expire(cacheKey, Duration.ofDays(1));
-     }
+    }
+
+    private String getPrivateConversationKey(String userId1, String userId2) {
+        // Ordena os IDs para garantir que a chave é a mesma, independentemente de quem envia
+        String userA = userId1.compareTo(userId2) < 0 ? userId1 : userId2;
+        String userB = userId1.compareTo(userId2) < 0 ? userId2 : userId1;
+        return "private:" + userA + ":" + userB + ":messages";
+    }
 
     private Message fromChatMessagetoEntity(PublicMessageDTO messageDTO, String senderId, String senderUsername) {
         Message message = Message.builder()
+                .type(MessageType.ROOM)
                 .roomId(messageDTO.roomId())
                 .content(messageDTO.content())
                 .senderId(senderId)
@@ -79,6 +93,7 @@ public class MessageService {
 
     private Message fromPrivateMessagetoEntity(PrivateMessageDTO messageDTO, String senderId, String senderUsername) {
         Message message = Message.builder()
+                .type(MessageType.PRIVATE)
                 .roomId(null)
                 .content(messageDTO.content())
                 .senderId(senderId)
@@ -106,7 +121,7 @@ public class MessageService {
 
         Message savedMessage = messageRepository.save(message);
 
-        return new ResponseMessageDTO(
+        ResponseMessageDTO savedDto = new ResponseMessageDTO(
                 savedMessage.getId(),
                 savedMessage.getType(),
                 savedMessage.getRoomId(),
@@ -115,6 +130,9 @@ public class MessageService {
                 savedMessage.getContent(),
                 savedMessage.getTimestamp()
         );
+
+        cacheMessage(savedDto);
+        return savedDto;
     }
 
     public PageResponseDTO<ResponseMessageDTO> listAllMessages(String roomId, Pageable pageable) {
@@ -165,6 +183,7 @@ public class MessageService {
         }
 
         List<ResponseMessageDTO> messagesFromDb = messageRepository.findTop50ByRoomIdOrderByTimestampDesc(roomId).stream()
+                .limit(MAX_CACHED_MESSAGES)
                 .map(this::toResponseDTO)
                 .collect(Collectors.toList());
 
@@ -174,6 +193,43 @@ public class MessageService {
             for (ResponseMessageDTO msg : messagesFromDb) {
                 redisTemplate.opsForList().rightPush(cacheKey, msg);
             }
+            redisTemplate.expire(cacheKey, Duration.ofDays(1));
+        }
+
+        return messagesFromDb;
+    }
+
+    public List<ResponseMessageDTO> getRecentPrivateMessages(String userId1, String userId2) {
+        String privateConversationKey = getPrivateConversationKey(userId1, userId2);
+
+        List<Object> cachedObjects = redisTemplate.opsForList().range(privateConversationKey, 0, -1);
+
+        if (cachedObjects != null && !cachedObjects.isEmpty()) {
+            return cachedObjects.stream()
+                    .map(obj -> {
+                        if (obj instanceof ResponseMessageDTO dto) {
+                            return dto;
+                        }
+                        if (obj instanceof Message msg) {
+                            return toResponseDTO(msg);
+                        }
+                        return (ResponseMessageDTO) obj;
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        List<ResponseMessageDTO> messagesFromDb = messageRepository.findTop50PrivateConversation(userId1, userId2).stream()
+                .limit(MAX_CACHED_MESSAGES)
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
+
+        Collections.reverse(messagesFromDb);
+
+        if (!messagesFromDb.isEmpty()) {
+            for (ResponseMessageDTO msg : messagesFromDb) {
+                redisTemplate.opsForList().rightPush(privateConversationKey, msg);
+            }
+            redisTemplate.expire(privateConversationKey, Duration.ofDays(1));
         }
 
         return messagesFromDb;
