@@ -17,24 +17,22 @@ import chat.chat_service.dto.request.PublicMessageDTO;
 import chat.chat_service.dto.request.PrivateMessageDTO;
 import chat.chat_service.dto.response.PageResponseDTO;
 import chat.chat_service.dto.response.ResponseMessageDTO;
-import chat.chat_service.exception.RoomNotFoundException;
 import chat.chat_service.model.Message;
 import chat.chat_service.model.MessageType;
 import chat.chat_service.repository.MessageRepository;
-import chat.chat_service.repository.RoomRepository;
 import io.lettuce.core.RedisException;
 
 @Service
 public class MessageService {
     private final MessageRepository messageRepository;
-    private final RoomRepository roomRepository;
+    private final RoomService roomService;
     private final RedisTemplate<String, Object> redisTemplate;
     private static final int MAX_CACHED_MESSAGES = 50;
     private static final Logger logger = LoggerFactory.getLogger(MessageService.class);
 
-    public MessageService(MessageRepository messageRepository, RoomRepository roomRepository, RedisTemplate<String, Object> redisTemplate) {
+    public MessageService(MessageRepository messageRepository, RoomService roomService, RedisTemplate<String, Object> redisTemplate) {
         this.messageRepository = messageRepository;
-        this.roomRepository = roomRepository;
+        this.roomService = roomService;
         this.redisTemplate = redisTemplate;
     }
 
@@ -42,9 +40,7 @@ public class MessageService {
         Message message = fromChatMessagetoEntity(messageDTO, senderId, senderUsername);
         message.setType(MessageType.ROOM);
 
-        if (!roomRepository.existsById(message.getRoomId())) {
-            throw new RoomNotFoundException("Sala não encontrada!");
-        }
+        roomService.existById(message.getRoomId());
 
         Message savedMessage = messageRepository.save(message);
         ResponseMessageDTO savedDto = new ResponseMessageDTO(

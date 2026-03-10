@@ -23,6 +23,12 @@ public class RoomService {
         this.roomRepository = roomRepository;
     }
 
+    public void existById(String roomId) {
+        if (!roomRepository.existsById(roomId)) {
+            throw new RoomNotFoundException("Sala não encontrada!");
+        }
+    }
+
     public Room createNewRoom(String title){
         if (roomRepository.existsByTitle(title)) {
             throw new EntityAlreadyExistsException("Já existe uma sala com o mesmo título");
