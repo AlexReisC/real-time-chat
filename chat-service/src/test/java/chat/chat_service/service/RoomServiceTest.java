@@ -33,7 +33,7 @@ class RoomServiceTest {
         room = Room.builder()
                 .id("1")
                 .title("General")
-                .membersUsernames(new HashSet<>())
+                .membersIds(new HashSet<>())
                 .build();
     }
 
@@ -50,7 +50,7 @@ class RoomServiceTest {
         // then
         assertNotNull(result);
         assertEquals(title, result.getTitle());
-        assertTrue(result.getMembersUsernames().isEmpty());
+        assertTrue(result.getMembersIds().isEmpty());
         verify(roomRepository).save(any(Room.class));
     }
 
@@ -81,7 +81,7 @@ class RoomServiceTest {
         roomService.addNewUser(roomId, username);
 
         // then
-        assertTrue(room.getMembersUsernames().contains(username));
+        assertTrue(room.getMembersIds().contains(username));
         verify(roomRepository).save(room);
     }
 
@@ -106,7 +106,7 @@ class RoomServiceTest {
         String username = "alex";
         Set<String> membros = new HashSet<>();
         membros.add(username);
-        room.setMembersUsernames(membros);
+        room.setMembersIds(membros);
 
         when(roomRepository.findById(roomId)).thenReturn(Optional.of(room));
 

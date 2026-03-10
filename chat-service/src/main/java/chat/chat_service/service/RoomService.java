@@ -23,23 +23,23 @@ public class RoomService {
         if (roomRepository.existsByTitle(title)) {
             throw new EntityAlreadyExistsException("Já existe uma sala com o mesmo título");
         }
-        Set<String> membersUsernames = new HashSet<>();
-        Room room = Room.builder().title(title).membersUsernames(membersUsernames).build();
+        Set<String> membersIds = new HashSet<>();
+        Room room = Room.builder().title(title).membersIds(membersIds).build();
         return roomRepository.save(room);
     }
 
-    public void addNewUser(String roomId, String username){
+    public void addNewUser(String roomId, String userId){
         Room room = roomRepository.findById(roomId).orElseThrow(() -> new RoomNotFoundException("Sala não encontrada!"));
-        if (room.getMembersUsernames().contains(username)){
-            throw new EntityAlreadyExistsException("Já existe um usuário com este username na sala.");
+        if (room.getMembersIds().contains(userId)){
+            throw new EntityAlreadyExistsException("Já existe um usuário com este ID na sala.");
         }
-        room.getMembersUsernames().add(username);
+        room.getMembersIds().add(userId);
         roomRepository.save(room);
     }
 
-    public void removeUser(String roomId, String username) {
+    public void removeUser(String roomId, String userId) {
         Room room = roomRepository.findById(roomId).orElseThrow(() -> new RoomNotFoundException("Sala não encontrada"));
-        boolean removed = room.getMembersUsernames().removeIf(u -> u.equals(username));
+        boolean removed = room.getMembersIds().removeIf(u -> u.equals(userId));
         if (removed){
             roomRepository.save(room);
         }
@@ -52,7 +52,7 @@ public class RoomService {
     public List<String> listAllMembersByRoom(String roomId) {
         Room room = roomRepository.findById(roomId).orElseThrow(() -> new RoomNotFoundException("Sala não encontrada"));
 
-        return new ArrayList<>(room.getMembersUsernames());
+        return new ArrayList<>(room.getMembersIds());
     }
 
 }

@@ -18,8 +18,10 @@ import java.util.Set;
 public class Room {
     @Id
     private String id;
+    
     @Indexed(unique = true)
     private String title;
-    @Indexed(name = "members_usernames")
-    Set<String> membersUsernames;
+    
+    @Indexed(name = "members_ids")
+    Set<String> membersIds;
 }

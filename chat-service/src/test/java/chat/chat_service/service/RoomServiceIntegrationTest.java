@@ -42,7 +42,7 @@ class RoomServiceIntegrationTest {
 
         assertTrue(encontrada.isPresent());
         assertEquals("Sala de Teste", encontrada.get().getTitle());
-        assertTrue(encontrada.get().getMembersUsernames().isEmpty());
+        assertTrue(encontrada.get().getMembersIds().isEmpty());
     }
 
     @Test
@@ -62,7 +62,7 @@ class RoomServiceIntegrationTest {
 
         Room updated = roomRepository.findById(room.getId()).orElseThrow();
 
-        assertTrue(updated.getMembersUsernames().contains(("alex")));
+        assertTrue(updated.getMembersIds().contains(("alex")));
     }
 
     @Test
