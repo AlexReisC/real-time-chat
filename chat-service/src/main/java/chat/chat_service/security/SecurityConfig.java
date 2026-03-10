@@ -27,7 +27,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> {
                     authorize.requestMatchers("/api/v1/rooms/**", "/api/v1/messages/**").authenticated();
-                    authorize.requestMatchers("/ws/chat/**").permitAll();
+                    authorize.requestMatchers("/ws/chat/**").authenticated();
                     authorize.anyRequest().denyAll();
                 })
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

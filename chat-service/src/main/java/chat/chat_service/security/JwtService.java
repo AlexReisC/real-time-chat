@@ -1,7 +1,5 @@
 package chat.chat_service.security;
 
-import java.util.Date;
-
 import javax.crypto.SecretKey;
 
 import org.slf4j.Logger;
