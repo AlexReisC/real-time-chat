@@ -7,6 +7,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Configuration
 public class RedisConfig {
     @Bean
@@ -16,10 +18,11 @@ public class RedisConfig {
 
         template.setKeySerializer(new StringRedisSerializer());
         
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        ObjectMapper mapper = new ObjectMapper();
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer(mapper));
         
         template.setHashKeySerializer(new StringRedisSerializer());
-        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer(mapper));
 
         template.afterPropertiesSet();
         return template;
