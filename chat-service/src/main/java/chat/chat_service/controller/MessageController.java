@@ -5,6 +5,9 @@ import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestAttribute;
@@ -40,14 +43,16 @@ public class MessageController {
     }
 
     @GetMapping("/private")
-    public ResponseEntity<PageResponseDTO<ResponseMessageDTO>> listAllPrivateMessages(
-            @RequestParam @NotBlank(message = "O ID do usuário 1 é obrigatório") String user1,
-            @RequestParam @NotBlank(message = "O ID do usuário 2 é obrigatório") String user2,
+    public ResponseEntity<PageResponseDTO<ResponseMessageDTO>> listAllPrivateMessages (
+            @RequestParam @NotBlank(message = "O ID do usuário 1 é obrigatório") String targetUserId,
+            @AuthenticationPrincipal Jwt jwt,
             @DecimalMin(value = "0", message = "O número da página deve ser zero ou maior") @RequestParam(defaultValue = "0") int page,
             @DecimalMin(value = "1", message = "O tamanho da página deve ser maior ou igual a 1") @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "timestamp") String sortBy
             ) {
-        PageResponseDTO<ResponseMessageDTO> allPrivateMessages = messageService.listAllPrivateMessages(user1, user2, PageRequest.of(page, size, Sort.by(sortBy)));
+        String currentUserId = jwt.getSubject();
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(sortBy));
+        PageResponseDTO<ResponseMessageDTO> allPrivateMessages = messageService.listAllPrivateMessages(currentUserId, targetUserId, pageRequest);
         return ResponseEntity.ok(allPrivateMessages);
     }
 
