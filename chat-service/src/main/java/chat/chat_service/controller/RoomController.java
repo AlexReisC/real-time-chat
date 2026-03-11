@@ -5,6 +5,7 @@ import chat.chat_service.dto.response.PageResponseDTO;
 import chat.chat_service.model.Room;
 import chat.chat_service.service.RoomService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
 import org.springframework.data.domain.PageRequest;
@@ -33,8 +34,8 @@ public class RoomController {
 
     @GetMapping
     public ResponseEntity<PageResponseDTO<Room>> listAllRooms(
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "20") int size,
+        @Min(value = 0, message = "O número da página deve ser zero ou maior") @RequestParam(defaultValue = "0") int page,
+        @Min(value = 1, message = "O tamanho da página deve ser maior ou igual a 1") @RequestParam(defaultValue = "20") int size,
         @RequestParam(defaultValue = "title") String sortBy,
         @RequestParam(defaultValue = "asc") String sortDir
     ) {
@@ -46,8 +47,8 @@ public class RoomController {
     @GetMapping("/{roomId}/members")
     public ResponseEntity<PageResponseDTO<String>> listAllMembers(
         @PathVariable @NotBlank(message = "O ID da sala é obrigatório") String roomId,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "20") int size,
+        @Min(value = 0, message = "O número da página deve ser zero ou maior") @RequestParam(defaultValue = "0") int page,
+        @Min(value = 1, message = "O tamanho da página deve ser maior ou igual a 1") @RequestParam(defaultValue = "20") int size,
         @RequestParam(defaultValue = "asc") String sortDir
     ) {
         Direction direction = "desc".equalsIgnoreCase(sortDir) ? Direction.DESC : Direction.ASC;
