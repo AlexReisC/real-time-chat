@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import chat.chat_service.dto.response.PageResponseDTO;
 import chat.chat_service.dto.response.ResponseMessageDTO;
 import chat.chat_service.service.MessageService;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
@@ -34,8 +35,8 @@ public class MessageController {
     @GetMapping("/room/{roomId}")
     public ResponseEntity<PageResponseDTO<ResponseMessageDTO>> listAllMessagesByRoom(
             @PathVariable @NotBlank(message = "O ID da sala é obrigatório") String roomId,
-            @Min(value = 0, message = "O número da página deve ser zero ou maior") @RequestParam(defaultValue = "0") int page,
-            @Min(value = 1, message = "O tamanho da página deve ser maior ou igual a 1") @RequestParam(defaultValue = "10") int size,
+            @Min(value = 0) @Max(value = 100) @RequestParam(defaultValue = "0") int page,
+            @Min(value = 1) @Max(value = 100) @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "timestamp") String sortBy
             ) {
         PageResponseDTO<ResponseMessageDTO> allMessages = messageService.listAllMessages(roomId, PageRequest.of(page, size, Sort.by(sortBy)));
@@ -46,8 +47,8 @@ public class MessageController {
     public ResponseEntity<PageResponseDTO<ResponseMessageDTO>> listAllPrivateMessages (
             @RequestParam @NotBlank(message = "O ID do usuário 1 é obrigatório") String targetUserId,
             @AuthenticationPrincipal Jwt jwt,
-            @Min(value = 0, message = "O número da página deve ser zero ou maior") @RequestParam(defaultValue = "0") int page,
-            @Min(value = 1, message = "O tamanho da página deve ser maior ou igual a 1") @RequestParam(defaultValue = "10") int size,
+            @Min(value = 0) @Max(value = 100) @RequestParam(defaultValue = "0") int page,
+            @Min(value = 1) @Max(value = 100) @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "timestamp") String sortBy
             ) {
         String currentUserId = jwt.getSubject();
