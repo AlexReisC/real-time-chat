@@ -20,6 +20,7 @@ import jakarta.validation.constraints.NotBlank;
 
 @RestController
 @RequestMapping("/api/v1/messages")
+@Validated
 public class MessageController {
     private final MessageService messageService;
 
