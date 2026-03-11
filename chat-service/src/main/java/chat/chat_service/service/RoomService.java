@@ -74,7 +74,7 @@ public class RoomService {
         );
 
         if (updateFirst.getMatchedCount() == 0) {
-            throw new RoomNotFoundException("Sala não encontrada ou usuário não é membro");
+            throw new RoomNotFoundException("Sala não encontrada");
         }
     }
 
