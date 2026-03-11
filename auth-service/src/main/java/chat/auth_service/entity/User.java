@@ -1,9 +1,11 @@
 package chat.auth_service.entity;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -37,14 +39,17 @@ public class User implements UserDetails{
     @ToString.Include
     private UUID id;
 
-    @Column(length = 50, nullable = false)
+    @Column(length = 50, nullable = false, unique = true)
     private String username;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String password;
+
+    @CreatedDate
+    private Instant createdAt;
 
     @Builder.Default
     @Column(name = "account_non_expired", nullable = false)
