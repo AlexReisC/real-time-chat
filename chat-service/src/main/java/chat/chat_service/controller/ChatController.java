@@ -12,7 +12,6 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import chat.chat_service.dto.request.PrivateMessageDTO;
 import chat.chat_service.dto.request.PublicMessageDTO;
@@ -40,8 +39,7 @@ public class ChatController {
     }
 
     @MessageMapping("/chat.addUser")
-    public void addUser(@Valid @Payload UserNotificationDTO notificationDTO,
-                                               SimpMessageHeaderAccessor headerAccessor){
+    public void addUser(@Valid @Payload UserNotificationDTO notificationDTO, SimpMessageHeaderAccessor headerAccessor){
         if (headerAccessor == null){
             throw new IllegalStateException("Atributos de sessão estão null ao adicionar usuário");
         }
@@ -95,29 +93,23 @@ public class ChatController {
         String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
         String senderUsername = (String) headerAccessor.getSessionAttributes().get("username");
 
-        logger.info("Mensagem recebida de {} na sala {}: {}", senderUsername, chatMessageDTO.roomId(), chatMessageDTO.content());
+        logger.info("Mensagem recebida de {} na sala {}", senderUsername, chatMessageDTO.roomId());
 
         ResponseMessageDTO savedMessage = messageService.savePublicMessage(chatMessageDTO, senderId, senderUsername);
         messagingTemplate.convertAndSend("/topic/rooms." + chatMessageDTO.roomId(), savedMessage);
     }
 
-    @MessageExceptionHandler
+    @MessageExceptionHandler(Exception.class)
     @SendToUser("/queue/errors")
-    public ErrorResponse handleValidationException(MethodArgumentNotValidException exception) {
-        String errorMessage = exception.getBindingResult()
-                .getAllErrors()
-                .getFirst()
-                .getDefaultMessage();
+    public ErrorResponse handleGenericException(Exception exception) {
+        logger.error("Erro não tratado no WebSocket: {}", exception.getMessage(), exception);
+        String errorMessage = exception.getMessage() != null ? exception.getMessage() : "Ocorreu um erro inesperado";
 
-        ErrorResponse erroResponse = new ErrorResponse(
+        return new ErrorResponse(
                 errorMessage,
-                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 Instant.now()
         );
-
-        logger.warn("Erro de validação ao processar mensagem: {}", errorMessage);
-
-        return erroResponse;
     }
 
     @MessageMapping("/chat.sendPrivate")
