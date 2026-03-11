@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 import chat.auth_service.dto.request.CreateUserDTO;
 import chat.auth_service.dto.request.LoginUserDTO;
-import chat.auth_service.dto.response.RecoveryTokenDTO;
+import chat.auth_service.dto.response.AuthTokenDTO;
 import chat.auth_service.dto.response.UserResponseDTO;
 import chat.auth_service.entity.User;
 import chat.auth_service.exception.EmailAlreadyExistsException;
@@ -23,7 +23,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public RecoveryTokenDTO authenticateUser(LoginUserDTO loginUserDTO) {
+    public AuthTokenDTO authenticateUser(LoginUserDTO loginUserDTO) {
         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                 loginUserDTO.email(),
                 loginUserDTO.password()
@@ -33,7 +33,7 @@ public class AuthService {
 
         User user = (User) authenticate.getPrincipal();
 
-        return new RecoveryTokenDTO(jwtService.generateToken(user));
+        return new AuthTokenDTO(jwtService.generateToken(user));
     }
 
     public UserResponseDTO createUser(CreateUserDTO createUserDTO) {

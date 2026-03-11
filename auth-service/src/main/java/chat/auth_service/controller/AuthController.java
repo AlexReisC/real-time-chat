@@ -2,7 +2,7 @@ package chat.auth_service.controller;
 
 import chat.auth_service.dto.request.CreateUserDTO;
 import chat.auth_service.dto.request.LoginUserDTO;
-import chat.auth_service.dto.response.RecoveryTokenDTO;
+import chat.auth_service.dto.response.AuthTokenDTO;
 import chat.auth_service.dto.response.UserResponseDTO;
 import chat.auth_service.service.AuthService;
 import jakarta.validation.Valid;
@@ -24,8 +24,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<RecoveryTokenDTO> login(@Valid @RequestBody LoginUserDTO loginUserDTO) {
-        RecoveryTokenDTO tokenDTO = authService.authenticateUser(loginUserDTO);
+    public ResponseEntity<AuthTokenDTO> login(@Valid @RequestBody LoginUserDTO loginUserDTO) {
+        AuthTokenDTO tokenDTO = authService.authenticateUser(loginUserDTO);
         return ResponseEntity.ok(tokenDTO);
     }
 
