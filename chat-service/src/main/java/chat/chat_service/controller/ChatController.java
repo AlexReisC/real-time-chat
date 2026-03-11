@@ -13,10 +13,9 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.RequestMapping;
 
-import chat.chat_service.dto.request.PublicMessageDTO;
 import chat.chat_service.dto.request.PrivateMessageDTO;
+import chat.chat_service.dto.request.PublicMessageDTO;
 import chat.chat_service.dto.request.UserNotificationDTO;
 import chat.chat_service.dto.response.ErrorResponse;
 import chat.chat_service.dto.response.ResponseMessageDTO;
@@ -27,7 +26,6 @@ import chat.chat_service.service.RoomService;
 import jakarta.validation.Valid;
 
 @Controller
-@RequestMapping("/ws/chat")
 public class ChatController {
     private final MessageService messageService;
     private final RoomService roomService;
