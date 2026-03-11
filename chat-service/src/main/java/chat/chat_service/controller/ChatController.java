@@ -54,7 +54,7 @@ public class ChatController {
         String roomId = notificationDTO.roomId();
         headerAccessor.getSessionAttributes().put("roomId", roomId);
 
-        roomService.addNewUser(roomId, username);
+        roomService.addNewUser(roomId, userId);
         logger.info("Usuário {} ({}) entrou na sala {}", username, userId, roomId);
 
         UserNotificationResponseDTO response = new UserNotificationResponseDTO(
@@ -77,7 +77,7 @@ public class ChatController {
         String senderUsername = (String) headerAccessor.getSessionAttributes().get("username");
         String roomId = notificationDTO.roomId();
 
-        roomService.removeUser(roomId, senderUsername);
+        roomService.removeUser(roomId, senderId);
         logger.info("Usuário {} ({}) saiu da sala {}", senderUsername, senderId, roomId);
         
         UserNotificationResponseDTO response = new UserNotificationResponseDTO(
@@ -131,7 +131,7 @@ public class ChatController {
 
         ResponseMessageDTO saved = messageService.savePrivateMessage(messageDTO, senderId, senderUsername);
 
-        messagingTemplate.convertAndSendToUser(saved.id(), "/queue/private", saved);
+        messagingTemplate.convertAndSendToUser(saved.recipientId(), "/queue/private", saved);
 
         messagingTemplate.convertAndSendToUser(senderId, "/queue/private", saved);
     }
