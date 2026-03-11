@@ -31,17 +31,32 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
-        return http
-                .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(autorize -> {
-                    autorize.requestMatchers(ENDPOINTS_WITH_AUTHENTICATION_NOT_REQUIRED).permitAll();
-                    autorize.anyRequest().authenticated();
+        http
+            .csrf(AbstractHttpConfigurer::disable)
+            .authorizeHttpRequests(autorize -> {
+                autorize.requestMatchers(ENDPOINTS_WITH_AUTHENTICATION_NOT_REQUIRED).permitAll();
+                autorize.anyRequest().authenticated();
+            })
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authenticationProvider(authenticationProvider)
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()));
+        
+        http
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, e) -> {
+                    response.setStatus(401);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"message\":\"Não autorizado\"}");
                 })
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(authenticationProvider)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .build();
+                .accessDeniedHandler((request, response, e) -> {
+                    response.setStatus(403);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"message\":\"Acesso negado\"}");
+                })
+            );
+        
+        return http.build();
     }
 
     @Bean
