@@ -114,7 +114,7 @@ class RoomServiceTest {
             roomService.addNewUser(roomId, userId);
         });
 
-        assertEquals("Sala não encontrada!", ex.getMessage());
+        assertEquals("Sala não encontrada", ex.getMessage());
     }
 
     @Test

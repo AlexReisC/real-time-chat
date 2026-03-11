@@ -33,7 +33,7 @@ public class RoomService {
 
     public void existById(String roomId) {
         if (!roomRepository.existsById(roomId)) {
-            throw new RoomNotFoundException("Sala não encontrada!");
+            throw new RoomNotFoundException("Sala não encontrada");
         }
     }
 
