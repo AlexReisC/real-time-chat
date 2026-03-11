@@ -10,18 +10,31 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+
+import com.mongodb.client.result.UpdateResult;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class RoomServiceTest {
     @Mock
     private RoomRepository roomRepository;
+
+    @Mock
+    private MongoTemplate mongoTemplate;
 
     @InjectMocks
     private RoomService roomService;
@@ -32,90 +45,131 @@ class RoomServiceTest {
     void setUp() {
         room = Room.builder()
                 .id("1")
-                .title("General")
+                .title("Geral")
                 .membersIds(new HashSet<>())
                 .build();
     }
 
     @Test
-    void shouldCreateRoomWhenTitleNotExists() {
-        // given
-        String title = "Nova Sala";
-        when(roomRepository.existsByTitle(title)).thenReturn(false);
-        when(roomRepository.save(any(Room.class))).thenAnswer(inv -> inv.getArgument(0));
+    void shouldCreateRoomSuccessfully() {
+        String title = "Sala de Teste";
 
-        // when
+        when(mongoTemplate.findOne(any(), eq(Room.class))).thenReturn(null);
+        when(mongoTemplate.insert(any(Room.class))).thenAnswer(inv -> inv.getArgument(0));
+
         Room result = roomService.createNewRoom(title);
 
-        // then
         assertNotNull(result);
         assertEquals(title, result.getTitle());
         assertTrue(result.getMembersIds().isEmpty());
-        verify(roomRepository).save(any(Room.class));
+        verify(mongoTemplate).insert(any(Room.class));
     }
 
     @Test
     void shouldThrowsExceptionWhenRoomWithSameTitleAlreadyExists() {
-        // given
-        String title = "Sala Existente";
-        when(roomRepository.existsByTitle(title)).thenReturn(true);
+        String title = "Geral";
+        when(mongoTemplate.findOne(any(), eq(Room.class))).thenReturn(room);
 
-        // then
-        EntityAlreadyExistsException ex = assertThrows(EntityAlreadyExistsException.class, () -> {
+        assertThrows(EntityAlreadyExistsException.class, () -> {
             roomService.createNewRoom(title);
         });
 
-        assertEquals("Já existe uma sala com o mesmo título", ex.getMessage());
-        verify(roomRepository, never()).save(any());
+        verify(mongoTemplate, never()).insert(any(Room.class));
     }
 
     @Test
-    void shouldAddNewUserInTheRoom() {
-        // given
+    void shouldAddNewUserInTheRoomSuccessfully() {
         String roomId = "1";
-        String username = "alex";
-        when(roomRepository.findById(roomId)).thenReturn(Optional.of(room));
-        when(roomRepository.save(any(Room.class))).thenAnswer(inv -> inv.getArgument(0));
+        String userId = "user-456";
 
-        // when
-        roomService.addNewUser(roomId, username);
+        UpdateResult successResult = mock(UpdateResult.class);
+        when(successResult.getMatchedCount()).thenReturn(1L);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Room.class)))
+            .thenReturn(successResult);
 
-        // then
-        assertTrue(room.getMembersIds().contains(username));
-        verify(roomRepository).save(room);
+        assertDoesNotThrow(() -> roomService.addNewUser(roomId, userId));
+        verify(mongoTemplate).updateFirst(any(Query.class), any(Update.class), eq(Room.class));
     }
 
     @Test
-    void shouldThrowsExceptionWhenRoomDoesntExists() {
-        // given
-        when(roomRepository.findById("999")).thenReturn(Optional.empty());
+    void shouldThrowRoomNotFoundExceptionWhenRoomDoesntExists() {
+        String roomId = "999";
+        String userId = "user-123";
 
-        // then
+        UpdateResult failResult = mock(UpdateResult.class);
+        when(failResult.getMatchedCount()).thenReturn(0L);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Room.class)))
+            .thenReturn(failResult);
+        when(roomRepository.findById(roomId)).thenReturn(Optional.empty());
+
         RoomNotFoundException ex = assertThrows(RoomNotFoundException.class, () -> {
-            roomService.addNewUser("999", "alex");
+            roomService.addNewUser(roomId, userId);
         });
 
         assertEquals("Sala não encontrada!", ex.getMessage());
-        verify(roomRepository, never()).save(any());
     }
 
     @Test
-    void shouldThrowsExceptionWhenUserAlreadyExistsInRoom() {
-        // given
+    void shouldThrowEntityAlreadyExistsExceptionWhenUserIsMenberOfRoom() {
         String roomId = "1";
-        String username = "alex";
-        Set<String> membros = new HashSet<>();
-        membros.add(username);
-        room.setMembersIds(membros);
+        String userId = "user-123";
+        room.setMembersIds(Set.of(userId));
 
+        UpdateResult failResult = mock(UpdateResult.class);
+        when(failResult.getMatchedCount()).thenReturn(0L);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Room.class)))
+            .thenReturn(failResult);
         when(roomRepository.findById(roomId)).thenReturn(Optional.of(room));
 
-        // then
         EntityAlreadyExistsException ex = assertThrows(EntityAlreadyExistsException.class, () -> {
-            roomService.addNewUser(roomId, username);
+            roomService.addNewUser(roomId, userId);
         });
 
-        assertEquals("Já existe um usuário com este username na sala.", ex.getMessage());
-        verify(roomRepository, never()).save(any());
+        assertEquals("Usuário já é membro da sala", ex.getMessage());    
+    }
+
+    @Test
+    void shouldRemoveUserFromRoomSuccessfully() {
+        String roomId = "1";
+        String userId = "user-123";
+        
+        UpdateResult successResult = mock(UpdateResult.class);
+        when(successResult.getMatchedCount()).thenReturn(1L);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Room.class)))
+            .thenReturn(successResult);
+        
+        assertDoesNotThrow(() -> roomService.removeUser(roomId, userId));
+        verify(mongoTemplate).updateFirst(any(Query.class), any(Update.class), eq(Room.class));
+    }
+
+    @Test
+    void shouldThrowRoomNotFoundExceptionWhenRemovingUserFromNonexistentRoom() {
+        String roomId = "999";
+        String userId = "user-123";
+        
+        UpdateResult failResult = mock(UpdateResult.class);
+        when(failResult.getMatchedCount()).thenReturn(0L);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Room.class)))
+            .thenReturn(failResult);
+        
+        RoomNotFoundException ex = assertThrows(RoomNotFoundException.class, () -> {
+            roomService.removeUser(roomId, userId);
+        });
+        assertEquals("Sala não encontrada", ex.getMessage());
+    }
+
+    @Test
+    void shouldReturnPageOfRooms() {
+        Room room1 = Room.builder().id("1").title("Sala 1").membersIds(new HashSet<>()).build();
+        Room room2 = Room.builder().id("2").title("Sala 2").membersIds(new HashSet<>()).build();
+        PageImpl<Room> rooms = new PageImpl<>(List.of(room1, room2));
+
+        when(roomRepository.findAll(PageRequest.of(0, 10))).thenReturn(rooms);
+        var result = roomService.listAllRooms(PageRequest.of(0, 10));
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertEquals("Sala 1", result.content().get(0).getTitle());
+        assertEquals("Sala 2", result.content().get(1).getTitle());
     }
 }
