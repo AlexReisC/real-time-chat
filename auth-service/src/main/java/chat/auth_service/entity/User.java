@@ -2,19 +2,28 @@ package chat.auth_service.entity;
 
 import java.time.Instant;
 import java.util.Collection;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -39,6 +48,7 @@ public class User implements UserDetails{
     @ToString.Include
     private UUID id;
 
+    @Getter(value = AccessLevel.NONE)
     @Column(length = 50, nullable = false, unique = true)
     private String username;
 
@@ -47,6 +57,13 @@ public class User implements UserDetails{
 
     @Column(nullable = false, length = 255)
     private String password;
+
+    @Builder.Default
+    @ElementCollection(fetch = FetchType.EAGER)
+    @Enumerated(EnumType.STRING)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "role")
+    private Set<Role> roles = new HashSet<>();
 
     @CreatedDate
     private Instant createdAt;
@@ -69,8 +86,13 @@ public class User implements UserDetails{
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of();
+        return roles.stream()
+                .map(r -> new SimpleGrantedAuthority(r.name()))
+                .toList();
     }
+
+    @Override
+    public String getUsername() { return email; }
 
     @Override
     public boolean isAccountNonExpired() {
