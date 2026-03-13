@@ -1,6 +1,6 @@
 package chat.auth_service.service;
 
-import chat.auth_service.entity.User;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.InvalidKeyException;
@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Date;
+import java.util.Map;
 
 @Service
 public class JwtService {
@@ -23,6 +25,9 @@ public class JwtService {
 
     @Value("${jwt.expiration}")
     private long jwtExpirationMs;
+
+    @Value("${jwt.refreshExpiration}")
+    private long jwtRefreshExpirationMs;
 
     private static final String ISSUER = "auth-service";
 
@@ -40,68 +45,60 @@ public class JwtService {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(User user) {
+    public String generateAccessToken(UserDetails user) {
+        return buildToken(user, jwtExpirationMs, Map.of("type", "access"));
+    }
+
+    public String generateRefreshToken(UserDetails user) {
+        return buildToken(user, jwtRefreshExpirationMs, Map.of("type", "refresh"));
+    }
+
+    private String buildToken(UserDetails user, long jwtExpirationMs, Map<String, Object> additionalClaims) {
         try {
+            var now = Instant.now();
             return Jwts.builder()
                     .issuer(ISSUER)
                     .subject(user.getUsername())
-                    .claim("userId", user.getId())
-                    .issuedAt(new Date())
-                    .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
+                    .claims(additionalClaims)
+                    .issuedAt(Date.from(now))
+                    .expiration(Date.from(now.plusMillis(jwtExpirationMs)))
                     .signWith(getSigninKey())
                     .compact();
         } catch (InvalidKeyException e) {
-            throw new InvalidKeyException("Erro ao gerar token, erro na chave de assinatura.");
+            throw new InvalidKeyException("Erro ao gerar token. Chave de assinatura inválida.");
         }
     }
 
-
     public String getSubjectFromToken(String token){
-        try {
-            return Jwts.parser()
-                    .verifyWith(getSigninKey())
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload()
-                    .getSubject();
-        } catch (JwtException | IllegalArgumentException e) {
-            throw new JwtException("Erro ao analisar as claims. JWT inválido.");
-        }
+        return parseClaims(token).getSubject();
     }
 
     public String getUserIdFromToken(String token) {
-        try {
-            return Jwts.parser()
-                    .verifyWith(getSigninKey())
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload()
-                    .get("userId", String.class);
-        } catch (JwtException | IllegalArgumentException e) {
-            throw new JwtException("Erro ao analisar as claims. JWT inválido.");
-        }
-    }
-
-    public Date getExpirationFromToken(String token) {
-        try {
-            return Jwts.parser()
-                    .verifyWith(getSigninKey())
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload()
-                    .getExpiration();
-        } catch (JwtException | IllegalArgumentException e) {
-            throw new JwtException("Erro ao analisar a data de expiração. JWT inválido.", e);
-        }
+        return parseClaims(token).get("userId", String.class);
     }
 
     private Boolean isTokenExpired(String token) {
-        final Date expiration = getExpirationFromToken(token);
-        return expiration.before(new Date());
+        return parseClaims(token).getExpiration().before(new Date());
     }
 
     public Boolean isTokenValid(String token, UserDetails userDetails) {
         final String usernameFromToken = getSubjectFromToken(token);
         return (usernameFromToken.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+    public boolean isRefreshToken(String token) {
+        return "refresh".equals(parseClaims(token).get("type", String.class));
+    }
+
+    private Claims parseClaims(String token) {
+        try {
+            return Jwts.parser()
+                    .verifyWith(getSigninKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new JwtException("Erro ao analisar as claims. JWT inválido.", e);
+        }
     }
 }
