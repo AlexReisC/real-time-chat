@@ -1,21 +1,72 @@
 package chat.auth_service.service;
 
+import chat.auth_service.dto.request.ChangePasswordRequest;
+import chat.auth_service.dto.request.UpdateProfileRequest;
+import chat.auth_service.dto.response.UserResponseDTO;
 import chat.auth_service.entity.User;
 import chat.auth_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
+import java.util.UUID;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
     private final UserRepository repository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public User loadUserByUsername(String username) throws UsernameNotFoundException {
         return repository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado com o email: " + username));
+                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado com o email"));
+    }
+
+    public User findByEmail(String email) {
+        return repository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+    }
+
+    public User findById(UUID id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+    }
+
+    public Page<UserResponseDTO> findAll() {
+        return repository.findAll(PageRequest.of(0, 20)).map(UserResponseDTO::from);
+    }
+
+    public User updateProfile(String email, UpdateProfileRequest req) {
+        var user = findByEmail(email);
+        user.setUsername(req.username());
+        return repository.save(user);
+    }
+
+    public void changePassword(String email, ChangePasswordRequest req) {
+        var user = findByEmail(email);
+
+        if (!passwordEncoder.matches(req.currentPassword(), user.getPassword())) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY, "Senha atual incorreta");
+        }
+
+        user.setPassword(passwordEncoder.encode(req.newPassword()));
+        repository.save(user);
+    }
+
+    public void disable(UUID id) {
+        var user = findById(id);
+        user.setEnabled(false);
+        repository.save(user);
     }
 }
