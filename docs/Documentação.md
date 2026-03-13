@@ -131,18 +131,34 @@ Componentes principais (serviços + infra):
 
 ```markdown
 chat/
+ ├─ config/
+ │   └─ RedisConfig.java
  ├─ controller/
  │   └─ ChatController.java
+ │   └─ MessageController.java
+ │   └─ RoomController.java
  ├─ service/
  │   ├─ ChatService.java
  │   └─ MessageService.java
  ├─ dto/
- │   ├─ ChatMessageDTO.java
- │   ├─ UserNotificationDTO.java
- │   └─ UserNotificationResponseDTO.java
+ │   ├─ request/
+ │   │   ├─ CreateRoomDTO.java
+ │   │   ├─ PrivateMessageDTO.java
+ │   │   ├─ PublicMessageDTO.java
+ │   │   └─ UserNotificationDTO.java
+ │   └─ response/
+ │   	 ├─ UserNotificationResponseDTO.java
+ │   	 ├─ PageResponse.java
+ │   	 ├─ ResponseMessageDTO.java
+ │   	 └─ ErrorResponse.java
  ├─ model/
  │   ├─ Message.java
  │   └─ Room.java
+ │   └─ MessageType.java
+ │   └─ NotificationType.java
+  ├─ security/
+ │   ├─ JwtService.java
+ │   └─ SecurityConfig.java
  ├─ websocket/
  │   ├─ WebSocketConfig.java
  │   ├─ UserHandshakeInterceptor.java
@@ -160,6 +176,7 @@ auth/
  │   └─ JwtAuthFilter.java
  ├─ controller/
  │   └─ AuthController.java
+ │   └─ UserController.java
  ├─ service/
  │   ├─ AuthService.java
  │   ├─ JwtService.java
@@ -167,17 +184,20 @@ auth/
  ├─ dto/
  │   ├─ request/
  │   │   ├─ CreateUserDTO.java
+ │   │   ├─ ChangePasswordRequest.java
+ │   │   ├─ RefreshRequest.java
+ │   │   ├─ UpdateProfileRequest.java
  │   │   └─ LoginUserDTO.java
  │   └─ response/
  │       ├─ ErrorApiResponse.java
- │       ├─ RecoveryTokenDTO.java
+ │       ├─ AuthTokenDTO.java
  │       └─ UserResponseDTO.java
  ├─ entity/
  │   └─ User.java
+ │   └─ Role.java
  ├─ exception/
  │   ├─ EmailAlreadyExistsException.java
- │   ├─ GlobalExceptionHandler.java
- │   └─ MissingTokenException.java
+ │   └─ GlobalExceptionHandler.java
  ├─ repository/
  │   └─ UserRepository.java
  ├─ service/
@@ -190,9 +210,57 @@ auth/
 	└─ db
 		└─ migration
 			├─ V1__create_users_table.sql
- ```
+			├─ V2__create_correct_users_table.sql
+			├─ V3__create_user_roles_table.sql
+```
 
-> Os projetos dos demais serviços ainda não foram iniciados
+### Config Server
+```markdown
+config-server/
+ ├─ src/
+ │   ├─ main/
+ │   │   ├─ java/
+ │   │   │   └─ chat/
+ │   │   │       └─ config_server/
+ │   │   │           └─ ConfigServerApplication.java
+ │   │   └─ resources/
+ │   │       └─ application.properties
+ ├─ pom.xml
+ ├─ Dockerfile
+ ├─ .gitignore
+ └─ .gitattributes
+```
+
+### API Gateway
+```markdown
+api-gateway/
+ ├─ src/
+ │   ├─ main/
+ │   │   ├─ java/
+ │   │   │   └─ chat/
+ │   │   │       └─ api_gateway/
+ │   │   │           └─ ApiGatewayApplication.java
+ │   │   └─ resources/
+ │   │       └─ application.properties
+ ├─ pom.xml
+ ├─ Dockerfile
+```
+
+### Eureka Server
+```markdown
+eureka-server/
+ ├─ src/
+ │   ├─ main/
+ │   │   ├─ java/
+ │   │   │   └─ chat/
+ │   │   │       └─ eureka_server/
+ │   │   │           └─ EurekaServerApplication.java
+ │   │   └─ resources/
+ │   │       └─ application.properties
+ ├─ pom.xml
+ ├─ Dockerfile
+```
+
 ## Funcionalidades básicas do usuário
 - Registro e Login (Autenticação e autorização com token JWT)
 - Criar salas
