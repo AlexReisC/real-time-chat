@@ -1,82 +1,69 @@
 package chat.auth_service.exception;
 
-import chat.auth_service.dto.response.ErrorApiResponse;
-import io.jsonwebtoken.JwtException;
+import java.security.InvalidKeyException;
+import java.util.stream.Collectors;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.security.InvalidKeyException;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import chat.auth_service.dto.response.ErrorApiResponse;
+import io.jsonwebtoken.JwtException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(UsernameNotFoundException.class)
-    public ResponseEntity<ErrorApiResponse> handleUserNotFound(UsernameNotFoundException exception){
-        ErrorApiResponse errorApiResponse = new ErrorApiResponse(
-                "Usuário não encontrado",
-                List.of(exception.getMessage()),
-                Instant.now()
-        );
+    public ResponseEntity<ErrorApiResponse> handleUserNotFound(UsernameNotFoundException exception) {
+        var errorApiResponse = ErrorApiResponse.of(HttpStatus.NOT_FOUND, "Usuário não encontrado");
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorApiResponse);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorApiResponse> handleValidationException(MethodArgumentNotValidException exception) {
-        List<String> erros = new ArrayList<>();
-        exception.getBindingResult()
-                .getFieldErrors().forEach(er -> erros.add(er.getField() + ": " + er.getDefaultMessage()));
-
-        ErrorApiResponse erroApiResponse = new ErrorApiResponse(
-                "Dados de entrada inválidos",
-                erros,
-                Instant.now()
-        );
-        return ResponseEntity.badRequest().body(erroApiResponse);
+        
+        String message = exception.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .sorted()
+                .collect(Collectors.joining(", "));
+        
+        return ResponseEntity
+                .badRequest()
+                .body(ErrorApiResponse.of(HttpStatus.BAD_REQUEST, message));
     }
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorApiResponse> handleBadCredentialsException(BadCredentialsException exception) {
-        List<String> erros = new ArrayList<>();
-        erros.add(exception.getMessage());
-
-        ErrorApiResponse erroApiResponse = new ErrorApiResponse(
-                "Credenciais do token inválidas",
-                erros,
-                Instant.now()
-        );
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(erroApiResponse);
+        var errorApiResponse = ErrorApiResponse.of(HttpStatus.UNAUTHORIZED, "Credenciais inválidas");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorApiResponse);
     }
 
-    @ExceptionHandler(EmailAlreadyExistsException.class)
-    public ResponseEntity<ErrorApiResponse> handleEmailAlreadyExistsException(EmailAlreadyExistsException exception) {
-        List<String> erros = new ArrayList<>();
-        erros.add(exception.getMessage());
-
-        ErrorApiResponse erroApiResponse = new ErrorApiResponse(
-                "O email inserido já está em uso",
-                erros,
-                Instant.now()
-        );
-        return ResponseEntity.badRequest().body(erroApiResponse);
+    @ExceptionHandler({JwtException.class, InvalidKeyException.class})
+    public ResponseEntity<ErrorApiResponse> handleJwt(JwtException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ErrorApiResponse.of(HttpStatus.UNAUTHORIZED, "Token inválido ou expirado"));
     }
 
-    @ExceptionHandler({ JwtException.class, InvalidKeyException.class, MissingTokenException.class })
-    public ResponseEntity<ErrorApiResponse> handleAuthException(Exception exception) {
-        List<String> erros = List.of(exception.getMessage());
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorApiResponse> handleAccessDeniedException(AccessDeniedException exception) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ErrorApiResponse.of(HttpStatus.FORBIDDEN, "Acesso negado"));
+    }
 
-        ErrorApiResponse erroApiResponse = new ErrorApiResponse(
-                "Erro de autenticação ou token",
-                erros,
-                Instant.now()
-        );
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(erroApiResponse);
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorApiResponse> handleResponseStatus(ResponseStatusException ex) {
+        return ResponseEntity
+                .status(ex.getStatusCode())
+                .body(ErrorApiResponse.of(
+                        HttpStatus.resolve(ex.getStatusCode().value()),
+                        ex.getReason()));
     }
 }
