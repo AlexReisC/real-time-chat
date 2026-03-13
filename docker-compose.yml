@@ -135,7 +135,7 @@ services:
 
 
   mongodb:
-    image: mongo:7.0
+    image: mongo
     container_name: chat-mongodb
     restart: unless-stopped
     environment:
@@ -157,7 +157,7 @@ services:
       start_period: 40s
 
   mongo-express:
-    image: mongo-express:7.0
+    image: mongo-express
     container_name: chat-mongo-express
     restart: unless-stopped
     ports:
@@ -175,7 +175,7 @@ services:
       - chat_network
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4.2.4-management
     container_name: rabbitmq
     restart: unless-stopped
     ports:
