@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,8 +35,8 @@ public class UserService {
                     HttpStatus.NOT_FOUND, "Usuário não encontrado"));
     }
 
-    public Page<UserResponseDTO> findAll() {
-        return repository.findAll(PageRequest.of(0, 20)).map(UserResponseDTO::from);
+    public Page<UserResponseDTO> findAll(Pageable pageable) {
+        return repository.findAll(pageable).map(UserResponseDTO::from);
     }
 
     public User updateProfile(String email, UpdateProfileRequest req) {
