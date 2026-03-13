@@ -1,17 +1,22 @@
 package chat.auth_service.service;
 
+import java.util.Set;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import chat.auth_service.dto.request.CreateUserDTO;
 import chat.auth_service.dto.request.LoginUserDTO;
 import chat.auth_service.dto.response.AuthTokenDTO;
-import chat.auth_service.dto.response.UserResponseDTO;
+import chat.auth_service.entity.Role;
 import chat.auth_service.entity.User;
-import chat.auth_service.exception.EmailAlreadyExistsException;
 import chat.auth_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -23,7 +28,10 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public AuthTokenDTO authenticateUser(LoginUserDTO loginUserDTO) {
+    @Value("${jwt.expiration}")
+    private long jwtExpiration;
+    
+    public AuthTokenDTO login(LoginUserDTO loginUserDTO) {
         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                 loginUserDTO.email(),
                 loginUserDTO.password()
@@ -33,26 +41,46 @@ public class AuthService {
 
         User user = (User) authenticate.getPrincipal();
 
-        return new AuthTokenDTO(jwtService.generateToken(user));
+        return issueTokens(user);
     }
 
-    public UserResponseDTO createUser(CreateUserDTO createUserDTO) {
+    public AuthTokenDTO createUser(CreateUserDTO createUserDTO) {
         boolean emailExists = userRepository.findByEmail(createUserDTO.email()).isPresent();
         if (emailExists) {
-            throw new EmailAlreadyExistsException("O email já está em uso");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email já cadastrado");
         }
 
         User user = User.builder()
                 .email(createUserDTO.email())
                 .password(passwordEncoder.encode(createUserDTO.password()))
                 .username(createUserDTO.username())
+                .roles(Set.of(Role.ROLE_USER))
                 .build();
 
-        User saved = userRepository.save(user);
-        return new UserResponseDTO(
-                saved.getId(),
-                saved.getEmail(),
-                saved.getUsername()
-        );
+        userRepository.save(user);
+        return issueTokens(user);
+    }
+
+    public AuthTokenDTO refresh(String refreshToken) {
+        if (!jwtService.isRefreshToken(refreshToken)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token inválido");
+        }
+
+        String email = jwtService.getSubjectFromToken(refreshToken);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+
+        if (!jwtService.isTokenValid(refreshToken, user)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token expirado");
+        }
+
+        return issueTokens(user);
+    }
+
+    private AuthTokenDTO issueTokens(UserDetails user) {
+        return AuthTokenDTO.of(
+                jwtService.generateAccessToken(user),
+                jwtService.generateRefreshToken(user),
+                jwtExpiration);
     }
 }
