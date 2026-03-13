@@ -3,7 +3,6 @@ package chat.auth_service.service;
 import java.util.Set;
 
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -11,7 +10,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import chat.auth_service.dto.request.CreateUserDTO;
 import chat.auth_service.dto.request.LoginUserDTO;
@@ -20,6 +18,7 @@ import chat.auth_service.entity.Role;
 import chat.auth_service.entity.User;
 import chat.auth_service.exception.EmailAlreadyExistsException;
 import chat.auth_service.repository.UserRepository;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -63,15 +62,15 @@ public class AuthService {
 
     public AuthTokenDTO refresh(String refreshToken) {
         if (!jwtService.isRefreshToken(refreshToken)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token inválido");
+            throw new JwtException("Token inválido");
         }
 
         String email = jwtService.getSubjectFromToken(refreshToken);
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+                .orElseThrow(() -> new JwtException("Token inválido"));
 
         if (!jwtService.isTokenValid(refreshToken, user)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token expirado");
+            throw new JwtException("Token expirado");
         }
 
         return issueTokens(user);
