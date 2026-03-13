@@ -2,7 +2,6 @@ package chat.auth_service.service;
 
 import java.util.Set;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,9 +29,6 @@ public class AuthService {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-
-    @Value("${jwt.expiration}")
-    private long jwtExpiration;
     
     public AuthTokenDTO login(LoginUserDTO loginUserDTO) {
         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
@@ -85,6 +81,6 @@ public class AuthService {
         return AuthTokenDTO.of(
                 jwtService.generateAccessToken(user),
                 jwtService.generateRefreshToken(user),
-                jwtExpiration);
+                jwtService.getExpiration());
     }
 }

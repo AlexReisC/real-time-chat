@@ -90,6 +90,10 @@ public class JwtService {
         return "refresh".equals(parseClaims(token).get("type", String.class));
     }
 
+    public long getExpiration(){
+        return this.jwtExpirationMs;
+    }
+
     private Claims parseClaims(String token) {
         try {
             return Jwts.parser()
