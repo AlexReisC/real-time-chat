@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import chat.auth_service.dto.request.ChangePasswordRequest;
 import chat.auth_service.dto.request.UpdateProfileRequest;
 import chat.auth_service.dto.response.UserResponseDTO;
+import chat.auth_service.entity.User;
 import chat.auth_service.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -28,14 +29,14 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
 
     @GetMapping("/me")
     public ResponseEntity<UserResponseDTO> getMe(Authentication authentication) {
-        var user = userService.findByEmail(authentication.getName());
+        User user = (User) authentication.getPrincipal();
         return ResponseEntity.ok(UserResponseDTO.from(user));
     }
 
