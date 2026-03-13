@@ -59,6 +59,20 @@ public class GlobalExceptionHandler {
                 .body(ErrorApiResponse.of(HttpStatus.CONFLICT, List.of("Email já está em uso")));
     }
 
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorApiResponse> handleUserNotFound(UserNotFoundException exception) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ErrorApiResponse.of(HttpStatus.NOT_FOUND, List.of(exception.getMessage())));
+    }
+
+    @ExceptionHandler(InvalidPasswordException.class)
+    public ResponseEntity<ErrorApiResponse> handleInvalidPassword(InvalidPasswordException exception) {
+        return ResponseEntity
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ErrorApiResponse.of(HttpStatus.UNPROCESSABLE_ENTITY, List.of(exception.getMessage())));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorApiResponse> handleGeneric(Exception ex) {
         logger.error("Erro interno não tratado", ex);
