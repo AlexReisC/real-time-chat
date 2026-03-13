@@ -32,3 +32,4 @@ jobs:
         env:
           SPRING_CLOUD_CONFIG_ENABLED: false
           SPRING_PROFILES_ACTIVE: test 
+          JWT_SECRET: test-secret-key-com-no-minimo-32-caracteres
