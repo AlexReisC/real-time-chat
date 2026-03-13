@@ -3,11 +3,11 @@ package chat.auth_service.service;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import chat.auth_service.dto.request.ChangePasswordRequest;
@@ -39,12 +39,14 @@ public class UserService {
         return repository.findAll(pageable).map(UserResponseDTO::from);
     }
 
+    @Transactional
     public User updateProfile(String email, UpdateProfileRequest req) {
         var user = findByEmail(email);
         user.setUsername(req.username());
         return repository.save(user);
     }
 
+    @Transactional
     public void changePassword(String email, ChangePasswordRequest req) {
         var user = findByEmail(email);
 
