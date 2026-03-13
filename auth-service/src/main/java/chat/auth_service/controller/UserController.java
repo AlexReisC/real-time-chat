@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import chat.auth_service.dto.request.ChangePasswordRequest;
 import chat.auth_service.dto.request.UpdateProfileRequest;
 import chat.auth_service.dto.response.UserResponseDTO;
-import chat.auth_service.service.UserDetailsServiceImpl;
+import chat.auth_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -27,43 +27,43 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class UserController {
-    private final UserDetailsServiceImpl userDetailsService;
+    private final UserService userService;
 
     @GetMapping("/me")
     public ResponseEntity<UserResponseDTO> getMe(Authentication authentication) {
-        var user = userDetailsService.findByEmail(authentication.getName());
+        var user = userService.findByEmail(authentication.getName());
         return ResponseEntity.ok(UserResponseDTO.from(user));
     }
 
     @PatchMapping("/me")
     public ResponseEntity<UserResponseDTO> updateMe( @Valid @RequestBody UpdateProfileRequest request, Authentication auth) {
-        var updated = userDetailsService.updateProfile(auth.getName(), request);
+        var updated = userService.updateProfile(auth.getName(), request);
         return ResponseEntity.ok(UserResponseDTO.from(updated));
     }
 
     @PutMapping("/me/password")
     public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest req, Authentication auth) {
-        userDetailsService.changePassword(auth.getName(), req);
+        userService.changePassword(auth.getName(), req);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<UserResponseDTO>> getAllUsers() {
-        return ResponseEntity.ok(userDetailsService.findAll());
+        return ResponseEntity.ok(userService.findAll());
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponseDTO> getById(@PathVariable UUID id) {
-        var user = userDetailsService.findById(id);
+        var user = userService.findById(id);
         return ResponseEntity.ok(UserResponseDTO.from(user));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> disable(@PathVariable UUID id) {
-        userDetailsService.disable(id);
+        userService.disable(id);
         return ResponseEntity.noContent().build();
     }
 }

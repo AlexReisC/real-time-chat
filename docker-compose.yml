@@ -3,7 +3,7 @@ services:
     build:
       context: ./eureka-server
       dockerfile: Dockerfile
-    container_name: service_discovery
+    container_name: service-discovery
     ports:
       - "${DISCOVERY_SERVICE_PORT}:${DISCOVERY_SERVICE_PORT}"
     networks:
@@ -20,7 +20,7 @@ services:
     build: 
       context: ./config-server
       dockerfile: Dockerfile
-    container_name: config_server
+    container_name: config-server
     ports:
       - "${CONFIG_SERVER_PORT}:${CONFIG_SERVER_PORT}"
     volumes:
@@ -41,7 +41,7 @@ services:
       start_period: 10s
 
   auth-service:
-    container_name: auth_service
+    container_name: auth-service
     build:
       context: ./auth-service
       dockerfile: Dockerfile
@@ -66,7 +66,7 @@ services:
 
   postgres:
     image: postgres:17
-    container_name: chat_postgres
+    container_name: chat-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB_NAME}
@@ -85,13 +85,13 @@ services:
       retries: 5
 
   chat-service:
-    container_name: chat_service
+    container_name: chat-service
     build:
       context: ./chat-service
       dockerfile: Dockerfile
     environment:
       SPRING_DATA_MONGODB_HOST: mongodb
-      SPRING_DATA_MONGODB_PORT: 27017
+      SPRING_DATA_MONGODB_PORT: ${MONGO_PORT}
       SPRING_DATA_MONGODB_DATABASE: ${MONGO_DATABASE}
       SPRING_DATA_MONGODB_USERNAME: ${MONGO_ROOT_USERNAME}
       SPRING_DATA_MONGODB_PASSWORD: ${MONGO_ROOT_PASSWORD}
@@ -114,9 +114,9 @@ services:
 
   api-gateway:
     build: ./api-gateway
-    container_name: api_gateway
+    container_name: api-gateway
     ports:
-      - "8080:8080"
+      - "${API_GATEWAY_PORT}:${API_GATEWAY_PORT}"
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-discovery:8761/eureka/
     depends_on:
@@ -129,7 +129,7 @@ services:
 
   mongodb:
     image: mongo:latest
-    container_name: chat_mongodb
+    container_name: chat-mongodb
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
@@ -151,7 +151,7 @@ services:
 
   mongo-express:
     image: mongo-express:latest
-    container_name: chat_mongo_express
+    container_name: chat-mongo-express
     restart: unless-stopped
     ports:
       - "${MONGOEXPRESS_PORT}:8081"

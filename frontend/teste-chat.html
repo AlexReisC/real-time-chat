@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste STOMP - Chat Service (Salas e Privado)</title>
+    <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        button { padding: 8px 15px; margin: 5px; cursor: pointer; background: #0056b3; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #004494; }
+        input { padding: 8px; margin: 5px; width: 200px; }
+        #log { background: #1e1e1e; color: #00ff00; padding: 15px; height: 350px; overflow-y: auto; border-radius: 5px; margin-top: 20px; font-family: monospace; }
+        .msg-recebida { color: #ffeb3b; font-weight: bold; }
+        .msg-privada { color: #ff00ff; font-weight: bold; }
+        .seccao { border: 1px solid #ccc; padding: 15px; margin-top: 15px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h2>Testes STOMP + RabbitMQ</h2>
+    
+    <script>
+        // ATENÇÃO: Coloque o seu token aqui
+        const SEU_TOKEN_AQUI = "COLE_O_SEU_TOKEN_AQUI"; 
+        const ROOM_ID = "123"; 
+    </script>
+
+    <div class="seccao">
+        <h3>Conexão</h3>
+        <button onclick="conectar()">1. Ligar ao Servidor</button>
+    </div>
+
+    <div class="seccao">
+        <h3>Sala Pública</h3>
+        <button onclick="entrarNaSala()">2. Entrar na Sala</button>
+        <button onclick="enviarMensagemPublica()">3. Enviar Msg para a Sala</button>
+    </div>
+
+    <div class="seccao">
+        <h3>Mensagem Privada</h3>
+        <input type="text" id="destinatarioId" placeholder="ID do Utilizador Destino">
+        <button onclick="enviarMensagemPrivada()">4. Enviar Msg Privada</button>
+    </div>
+
+    <div id="log">Logs do sistema...<br></div>
+
+    <script>
+        let stompClient = null;
+
+        function logar(texto, cssClass = '') {
+            const divLog = document.getElementById('log');
+            divLog.innerHTML += `<div class="${cssClass}">[${new Date().toLocaleTimeString()}] ${texto}</div>`;
+            divLog.scrollTop = divLog.scrollHeight;
+        }
+
+        function conectar() {
+            stompClient = new window.StompJs.Client({
+                brokerURL: `ws://localhost:8080/ws/chat?token=${SEU_TOKEN_AQUI}`,
+                onConnect: (frame) => {
+                    logar("✅ CONECTADO com sucesso!");
+                    
+                    // 🎧 INSCRIÇÃO NO CANAL PRIVADO (Automática ao ligar)
+                    // O Spring traduz '/user/queue/private' para a fila exclusiva do RabbitMQ
+                    stompClient.subscribe('/user/queue/private', (message) => {
+                        logar(`🤫 MENSAGEM PRIVADA RECEBIDA: ${message.body}`, 'msg-privada');
+                    });
+                    logar("🎧 Inscrito no canal de mensagens privadas (/user/queue/private)");
+                },
+                onStompError: (frame) => { logar("❌ ERRO STOMP: " + frame.headers['message']); },
+                onWebSocketError: (event) => { logar("❌ ERRO WebSocket."); }
+            });
+            stompClient.activate();
+        }
+
+        function entrarNaSala() {
+            if (!stompClient || !stompClient.connected) { alert("Ligue-se primeiro!"); return; }
+
+            const destinoTopic = `/topic/rooms.${ROOM_ID}`;
+            stompClient.subscribe(destinoTopic, (message) => {
+                logar(`📩 Recebido da Sala: ${message.body}`, 'msg-recebida');
+            });
+            logar(`🎧 Inscrito na sala: ${destinoTopic}`);
+
+            const destinoApp = "/app/chat.addUser";
+            stompClient.publish({ destination: destinoApp, body: JSON.stringify({ roomId: ROOM_ID, type: "JOIN" }) });
+            logar(`📤 Comando de entrada enviado para ${destinoApp}`);
+        }
+
+        function enviarMensagemPublica() {
+            if (!stompClient || !stompClient.connected) { alert("Ligue-se primeiro!"); return; }
+
+            const destinoApp = "/app/chat.sendPublic";
+            const payload = JSON.stringify({ roomId: ROOM_ID, content: "Olá a todos na sala!" });
+            
+            stompClient.publish({ destination: destinoApp, body: payload });
+            logar(`📤 Mensagem pública enviada.`);
+        }
+
+        function enviarMensagemPrivada() {
+            if (!stompClient || !stompClient.connected) { alert("Ligue-se primeiro!"); return; }
+
+            const recipientId = document.getElementById('destinatarioId').value;
+            if (!recipientId) { alert("Introduza o ID do destinatário!"); return; }
+
+            // Mapeia para o método @MessageMapping("/chat.sendPrivate") no seu ChatController
+            const destinoApp = "/app/chat.sendPrivate";
+            
+            // O payload deve corresponder aos campos do seu PrivateMessageDTO
+            const payload = JSON.stringify({ 
+                recipientId: recipientId, 
+                content: "Psiu! Mensagem super secreta pelo RabbitMQ!" 
+            });
+
+            stompClient.publish({ destination: destinoApp, body: payload });
+            logar(`📤 Mensagem privada enviada para o utilizador ${recipientId}`);
+        }
+    </script>
+</body>
+</html>
