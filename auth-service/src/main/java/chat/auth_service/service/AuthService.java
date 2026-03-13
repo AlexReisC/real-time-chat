@@ -11,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import chat.auth_service.dto.request.CreateUserDTO;
@@ -46,6 +47,7 @@ public class AuthService {
         return issueTokens(user);
     }
 
+    @Transactional
     public AuthTokenDTO createUser(CreateUserDTO createUserDTO) {
         User user;
         try {
@@ -53,7 +55,7 @@ public class AuthService {
                     .email(createUserDTO.email())
                     .password(passwordEncoder.encode(createUserDTO.password()))
                     .username(createUserDTO.username())
-                    .roles(Set.of(Role.ROLE_USER))
+                    .roles(Set.of(Role.USER))
                     .build();
 
             var saved = userRepository.save(user);
