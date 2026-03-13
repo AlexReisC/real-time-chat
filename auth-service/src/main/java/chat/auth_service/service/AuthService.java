@@ -3,6 +3,7 @@ package chat.auth_service.service;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,6 +18,7 @@ import chat.auth_service.dto.request.LoginUserDTO;
 import chat.auth_service.dto.response.AuthTokenDTO;
 import chat.auth_service.entity.Role;
 import chat.auth_service.entity.User;
+import chat.auth_service.exception.EmailAlreadyExistsException;
 import chat.auth_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -45,20 +47,20 @@ public class AuthService {
     }
 
     public AuthTokenDTO createUser(CreateUserDTO createUserDTO) {
-        boolean emailExists = userRepository.findByEmail(createUserDTO.email()).isPresent();
-        if (emailExists) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email já cadastrado");
+        User user;
+        try {
+            user = User.builder()
+                    .email(createUserDTO.email())
+                    .password(passwordEncoder.encode(createUserDTO.password()))
+                    .username(createUserDTO.username())
+                    .roles(Set.of(Role.ROLE_USER))
+                    .build();
+
+            var saved = userRepository.save(user);
+            return issueTokens(saved);
+        } catch (DataIntegrityViolationException e) {
+            throw new EmailAlreadyExistsException("O email já está em uso");
         }
-
-        User user = User.builder()
-                .email(createUserDTO.email())
-                .password(passwordEncoder.encode(createUserDTO.password()))
-                .username(createUserDTO.username())
-                .roles(Set.of(Role.ROLE_USER))
-                .build();
-
-        userRepository.save(user);
-        return issueTokens(user);
     }
 
     public AuthTokenDTO refresh(String refreshToken) {

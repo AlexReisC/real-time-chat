@@ -29,6 +29,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         final String recoveredToken = recoveryToken(request);
+        final String email;
 
         if (recoveredToken == null) {
             filterChain.doFilter(request, response);
@@ -36,7 +37,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         try {
-            final String email = jwtService.getSubjectFromToken(recoveredToken);
+            email = jwtService.getSubjectFromToken(recoveredToken);
             
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 User user = this.userDetailsService.loadUserByUsername(email);
