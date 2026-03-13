@@ -29,7 +29,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         final String recoveredToken = recoveryToken(request);
-        final String username;
 
         if (recoveredToken == null) {
             filterChain.doFilter(request, response);
@@ -37,15 +36,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         try {
-            username = jwtService.getSubjectFromToken(recoveredToken);
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                User userDetails = this.userDetailsService.loadUserByUsername(username);
+            final String email = jwtService.getSubjectFromToken(recoveredToken);
+            
+            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                User user = this.userDetailsService.loadUserByUsername(email);
 
-                if (jwtService.isTokenValid(recoveredToken, userDetails)) {
+                if (jwtService.isTokenValid(recoveredToken, user)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
+                            user,
                             null,
-                            userDetails.getAuthorities()
+                            user.getAuthorities()
                     );
 
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
