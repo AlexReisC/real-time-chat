@@ -58,6 +58,13 @@ public class GlobalExceptionHandler {
                 .body(ErrorApiResponse.of(HttpStatus.FORBIDDEN, "Acesso negado"));
     }
 
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    public ResponseEntity<ErrorApiResponse> handleEmailExisting(EmailAlreadyExistsException exception) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ErrorApiResponse.of(HttpStatus.CONFLICT, "Email já está em uso"));
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ErrorApiResponse> handleResponseStatus(ResponseStatusException ex) {
         return ResponseEntity
