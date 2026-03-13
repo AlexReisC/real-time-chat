@@ -30,4 +30,5 @@ jobs:
         run: mvn -B verify
         working-directory: ./chat-service
         env:
+          SPRING_CLOUD_CONFIG_ENABLED: false
           SPRING_PROFILES_ACTIVE: test 
