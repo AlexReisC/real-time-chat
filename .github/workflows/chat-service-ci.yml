@@ -29,3 +29,5 @@ jobs:
       - name: Build and Test with Maven
         run: mvn -B verify
         working-directory: ./chat-service
+        env:
+          SPRING_PROFILES_ACTIVE: test 
