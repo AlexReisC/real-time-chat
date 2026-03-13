@@ -41,7 +41,7 @@ public class AuthService {
 
         Authentication authenticate = authenticationManager.authenticate(authenticationToken);
 
-        User user = (User) authenticate.getPrincipal();
+        UserDetails user = (UserDetails) authenticate.getPrincipal();
 
         return issueTokens(user);
     }
