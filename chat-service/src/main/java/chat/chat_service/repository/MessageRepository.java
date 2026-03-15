@@ -13,7 +13,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface MessageRepository extends MongoRepository<Message, String> {
     Page<Message> findByRoomId(String roomId, Pageable pageable);
-    @Query("{: [ {roomId: null}, {: [ {senderId: ?0, recipientId: ?1}, {senderId: ?1, recipientId: ?0} ]} ]}")
+    
+    @Query("{ $and: [ { 'roomId': null }, { $or: [ { 'senderId': ?0, 'recipientId': ?1 }, { 'senderId': ?1, 'recipientId': ?0 } ] } ] }")
     Page<Message> findPrivateConversation(String userId1, String userId2, Pageable pageable);
 
     List<Message> findTop50ByRoomIdOrderByTimestampDesc(String roomId);
