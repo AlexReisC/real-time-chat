@@ -66,10 +66,10 @@ public class JwtService {
                 .claims(additionalClaims);
 
             if (user instanceof User) {
-                builder.claim("userId", ((User) user).getId());
+                builder.claim("userId", ((User) user).getId())
+                    .claim("userDisplayName", ((User) user).getDisplayName());
             }
             
-            logger.info("getUsername retorna o email: {}", user.getUsername());
             return builder
                     .issuer(ISSUER)
                     .subject(user.getUsername())
