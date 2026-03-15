@@ -4,6 +4,7 @@ import java.time.Instant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -29,13 +30,15 @@ public class ChatController {
     private final MessageService messageService;
     private final RoomService roomService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final StringRedisTemplate redisTemplate;
 
     private static final Logger logger = LoggerFactory.getLogger(ChatController.class);
 
-    public ChatController(MessageService messageService, SimpMessagingTemplate messagingTemplate, RoomService roomService) {
+    public ChatController(MessageService messageService, SimpMessagingTemplate messagingTemplate, RoomService roomService, StringRedisTemplate redisTemplate) {
         this.messageService = messageService;
         this.roomService = roomService;
         this.messagingTemplate = messagingTemplate;
+        this.redisTemplate = redisTemplate;
     }
 
     @MessageMapping("/chat.addUser")
@@ -45,7 +48,8 @@ public class ChatController {
         }
 
         String userId = (String) headerAccessor.getSessionAttributes().get("userId");
-        String username = (String) headerAccessor.getSessionAttributes().get("username");
+        String redisKey = "user:" + userId + ":username";
+        String username = (String) redisTemplate.opsForValue().get(redisKey);
 
         String roomId = notificationDTO.roomId();
         headerAccessor.getSessionAttributes().put("roomId", roomId);
@@ -70,7 +74,9 @@ public class ChatController {
                                                   SimpMessageHeaderAccessor headerAccessor) {
 
         String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
-        String senderUsername = (String) headerAccessor.getSessionAttributes().get("username");
+        String redisKey = "user:" + senderId + ":username";
+        String senderUsername = (String) redisTemplate.opsForValue().get(redisKey);
+        
         String roomId = notificationDTO.roomId();
 
         roomService.removeUser(roomId, senderId);
@@ -91,7 +97,8 @@ public class ChatController {
     @MessageMapping("/chat.sendPublic")
     public void sendPublicMessage(@Valid @Payload PublicMessageDTO chatMessageDTO, SimpMessageHeaderAccessor headerAccessor){
         String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
-        String senderUsername = (String) headerAccessor.getSessionAttributes().get("username");
+        String redisKey = "user:" + senderId + ":username";
+        String senderUsername = (String) redisTemplate.opsForValue().get(redisKey);
 
         logger.info("Mensagem recebida de {} na sala {}", senderUsername, chatMessageDTO.roomId());
 
@@ -115,7 +122,8 @@ public class ChatController {
     @MessageMapping("/chat.sendPrivate")
     public void sendPrivateMessage(@Valid @Payload PrivateMessageDTO messageDTO, SimpMessageHeaderAccessor headerAccessor) {
         String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
-        String senderUsername = (String) headerAccessor.getSessionAttributes().get("username");
+        String redisKey = "user:" + senderId + ":username";
+        String senderUsername = (String) redisTemplate.opsForValue().get(redisKey);
 
         logger.info("Mensagem enviada de {} para {}", senderUsername, messageDTO.recipientId());
 
