@@ -1,134 +1,115 @@
-## Arquitetura 
-![Arquitetura do sistema](arquitetura.png)
-Componentes principais (serviços + infra):
-1. **Service Discovery** — _Eureka (Spring Cloud Netflix Eureka)_
-2. **Config Server** — _Spring Cloud Config Server_
-3. **API Gateway** — _Spring Cloud Gateway_ (faz roteamento HTTP + WebSocket proxy)
-4. **Auth & User Service** (unificado) — _Spring Boot + PostgreSQL_ (autenticação/usuário/profile)
-5. **Chat Service** — _Spring Boot_ (WebSocket endpoint, lógica de salas, persistência em MongoDB)
-6. **Message Broker** — _RabbitMQ_ (fila / exchange para entregar messages entre instâncias e serviços)
-7. **Cache** — _Redis_ (sessões leves, presença, metadados de sala, TTLs)
-8. **Bancos de dados** — PostgreSQL (Auth/User), MongoDB (Chat: mensagens/rooms)
-9. **Observability (opcional)** — logs centralizados + métricas (Prometheus/Grafana) — opicional para demonstrar boas práticas.
+Chat em tempo real usando Websockets feito com Spring Boot e arquitetura de Microsserviços.
+## Arquitetura
 
-### Por que cada serviço / papel
+**Tech stack**: Java (21), Spring Boot, PostgreSQL, MongoDB, Redis, Docker, RabbitMQ.
+### Serviços do sistema
+- **Service Discovery**
+	- **Dependências Spring Boot:** Spring Cloud Netflix Eureka, Spring Boot Actuator
+- **Config Server**
+	- **Dependências Spring Boot:** Spring Cloud Config Server, Spring Boot Actuator
+- **API Gateway**
+	- **Dependências Spring Boot:** Spring Cloud Config, Spring Cloud Netflix Eureka, Spring Cloud Gateway Server Webflux, Spring Boot Actuator
+- **Auth Service**
+	- **Dependências Spring Boot:** Spring Web, Spring Security, Spring Cloud Netflix Eureka, Spring Cloud Config, Spring Boot Validation, jsonwebtoken, Spring Data JPA, PostgreSQL, Flyway, Lombok
+- **Chat Service**
+	- **Dependências Spring Boot:** Spring WebSockets, Spring Web, Spring Security, Spring Data Mongo, Spring Boot Validation, jsonwebtoken,  Spring Cloud Netflix Eureka,  Spring Cloud  Config, Spring OAuth2 Resource Server, Spring Boot AMQP, Reactor Netty, Spring Data Redis
+### Demais componentes do sistema
+- **RabbitMQ (mensageria)**
+	- Função: Roteia mensagens (exchanges/queues). Ex.: quando um usuário envia mensagem, Chat Service publica na exchange; instâncias interessadas consomem e entregam aos sockets locais.
+- **Redis (cache & presença)**
+	- Função: Cache de metadados (ultimas mensagens, lista de participantes), locks leves.
+- **Docker Compose**: Orquestra todos os serviços.
+### Responsabilidade de cada serviço
 1. **API Gateway**
-	- Função: Ponto de entrada único para clientes — roteia requisições REST e faz upgrade para WebSocket (proxy). Também centraliza TLS, rate limiting, CORS, e validação básica do JWT.
-	- Justificativa: Em microsserviços é padrão ter um gateway para reduzir a exposição direta dos serviços e oferecer cross-cutting concerns (autenticação, logging, roteamento). Mantemos a lógica no gateway mínima (não colocar regras de negócio).
+	- Função: Ponto de entrada único para clientes — roteia requisições REST e faz upgrade para WebSocket e configura o CORS.
 2. **Service Discovery (Eureka)**
-	- Função: Permite que serviços encontrem uns aos outros dinamicamente (nome -> instância). O gateway e serviços se registram no Eureka.
-	- Justificativa: Ajuda a escalar serviços (múltiplas instâncias do Chat Service), e é um padrão clássico do ecossistema Spring Cloud. Para um portfólio, demonstra que você conhece service discovery.
+	- Função: Permite que serviços encontrem uns aos outros dinamicamente. O gateway e serviços se registram no Eureka.
 3. **Config Server**
 	- Função: Centraliza configurações (profiles, secrets leves) para todos os serviços.
-	- Justificativa: Mostra prática de configuração centralizada e gestão de ambientes (dev/staging/prod). Mantém serviços com menos config hard-coded.
-4. **Auth & User Service**
+4. **Auth Service**
 	- Função: Cadastro/login, emissão de JWT, gerenciamento de perfis, validação de autorização. Persiste usuários em PostgreSQL.
-	- Justificativa: Separar identidade é uma boa prática. Para manter o projeto enxuto, unificamos auth e user em um único serviço — suficiente para demonstrar padrões de segurança (JWT, refresh tokens, roles).
 5. **Chat Service**
-	- Função: Lógica de salas, conexão WebSocket (STOMP ou protocolo simples), persistência de mensagens em MongoDB, publicação/assinatura via RabbitMQ para entregar mensagens entre instâncias. Mantém estado efêmero no Redis (por ex. presença, sessões).
-	- Justificativa: Chat é o núcleo: precisa lidar com conexões em tempo real e persistência. MongoDB é natural para mensagens (document model flexível). RabbitMQ garante entrega entre instâncias (pub/sub) e desacopla produtores/consumidores.
-6. **RabbitMQ (mensageria)**
-	- Função: Roteia mensagens (exchanges/queues). Ex.: quando um usuário envia mensagem, Chat Service publica na exchange; instâncias interessadas consomem e entregam aos sockets locais.
-	- Justificativa: Garante escalabilidade horizontal — se eu tiver 3 instâncias do Chat Service, cada uma consome apenas as messages que precisa entregar aos seus clientes. Também permite integrações futuras (notificações push, arquivamento).
-7. **Redis (cache & presença)**
-	- Função: Cache de metadados (ultimas mensagens, lista de participantes, presença com TTL), locks leves.
-	- Justificativa: Acesso rápido e TTL útil para presença (se o socket cair sem aviso). Evita leituras frequentes no MongoDB para dados voláteis.
-### Definição de portas 
+	- Função: Lógica de salas, conexão WebSocket (STOMP ou protocolo simples), persistência de mensagens em MongoDB, publicação/assinatura via RabbitMQ para entregar mensagens entre instâncias. Mantém estado efêmero no Redis (por ex. cache de mensagens).
 
+---
+### Endpoints por serviço
+> **Os endepoints do Auth Service e do CHat Service usam o mesmo prefixo `/api/v1/`**
+
+#### Auth Service
+| Método  | Endpoint              | Descrição                                   |
+| ------- | --------------------- | ------------------------------------------- |
+| `POST`  | `/auth/register`      | Registrar novo usuário                      |
+| `POST`  | `/auth/login`         | Autenticar usuário e gerar JWT              |
+| `POST`  | `/auth/refresh`       | Refresh do token                            |
+| `GET`   | `/users/me`           | Retornar informações do usuário autenticado |
+| `PATCH` | `/users/me`           | Atualizar nome de usuário (username)        |
+| `PUT`   | `/users//me/password` | Atualizar a senha do usuário autenticado    |
+
+#### **Chat Service**
+| Tipo     | Endpoint                                   | Descrição                                                                |
+| -------- | ------------------------------------------ | ------------------------------------------------------------------------ |
+| `WS`     | `/ws/chat`                                 | Conectar-se ao chat (envia JWT no handshake)                             |
+| `GET`    | `/chat/messages/{roomId}`                  | Buscar histórico de mensagens                                            |
+| `POST`   | `/rooms`                                   | Criar nova sala de chat                                                  |
+| `GET`    | `/rooms`                                   | Listar todas as salas disponíveis                                        |
+| `GET`    | `/rooms/{roomId}/members`                  | Listar todos os usuários conectados em uma sala                          |
+| `GET`    | `/messages/room/{roomId}/history`          | Listar todos as mensagens (páginadas) de uma sala                        |
+| `GET`    | `/messages/private/{targetUserId}`/history | Listar todas as mensagens (páginadas) de uma conversa privada            |
+| `GET`    | `messages/private/{targetUserId}`          | Carregamento das mensagens (50 últimas) do cache de uma conversa privada |
+| `GET`    | `/messages/room/{roomId}`                  | Carregamento dedas mensagens (50 últimas) do cache de uma sala           |
+| `GET`    | `/private/conversations`                   | Listar as conversas existentes do usuário                                |
+| `DELETE` | `rooms/{roomId}`                           | Deletar uma sala                                                         |
+| `DELETE` | `rooms/{roomId}/members`                   | Remove o usuário permanentemente de uma sala                             |
+
+#### **API Gateway**
+| Rota           | Encaminha para   | Observações                |
+| -------------- | ---------------- | -------------------------- |
+| `/auth/**`     | Auth Service     | Login, registro, validação |
+| `/chat/**`     | Chat Service     | REST do chat               |
+| `/ws/**`       | Chat Service     | Proxy de WebSocket         |
+| `/actuator/**` | Todos (restrito) | Monitoramento              |
+| `/users/**`    | Auth Service     | Gerenciamento de usuário   |
+
+### Portas de cada serviço
 | Serviço/Banco | Nº porta        |
 | ------------- | --------------- |
 | Gateway       | 8080            |
-| Auth          | 8083            |
 | Chat          | 8082            |
+| Auth          | 8083            |
 | Discovery     | 8761            |
 | Config        | 8888            |
 | PostgreSQL    | 5432 (default)  |
 | Mongo         | 27017 (defautl) |
 | Mongo-Express | 8081 (default)  |
 | RabbitMQ      | 5672 (default)  |
-| Frontend      | 3000            |
-
-### **Endpoints principais por serviço**
-
-#### 🔐 Auth Service
-
-|Método|Endpoint|Descrição|
-|---|---|---|
-|`POST`|`/auth/register`|Registrar novo usuário|
-|`POST`|`/auth/login`|Autenticar usuário e gerar JWT|
-|`GET`|`/auth/validate`|Validar token JWT (usado pelo gateway)|
-|`GET`|`/auth/me`|Retornar informações do usuário autenticado|
+| React         | 3000            |
 
 ---
-#### 💬 Chat Service
-
-|Tipo|Endpoint|Descrição|
-|---|---|---|
-|`WS`|`/ws/chat`|Conectar-se ao chat (envia JWT no handshake)|
-|`GET`|`/chat/messages/{roomId}`|Buscar histórico de mensagens|
-|`POST`|`/chat/rooms`|Criar nova sala de chat|
-|`GET`|`/chat/rooms`|Listar salas disponíveis|
-|`GET`|`/chat/rooms/{roomId}/users`|Listar usuários conectados em uma sala|
-|`GET`|`/chat/health`|Health-check do serviço|
-
----
-#### 🚪 API Gateway (Roteamento)
-
-|Rota|Encaminha para|Observações|
-|---|---|---|
-|`/auth/**`|Auth Service|Login, registro, validação|
-|`/chat/**`|Chat Service|REST do chat|
-|`/ws/**`|Chat Service|Proxy de WebSocket|
-|`/actuator/**`|Todos (restrito)|Monitoramento|
-
----
-# Fluxos / casos de uso (sequências) — passo a passo
-
-## Caso 1 — Conexão & Autenticação (cliente abre app)
-
-1. Cliente (React) pede token ao **Auth Service** via HTTP (username/password).
-    - Auth valida credenciais no PostgreSQL e retorna **JWT** (+ refresh token opcional).
-    - Por que: separar credenciais e emitir JWT evita enviar senha repetidamente.
-2. Cliente abre WebSocket para o **API Gateway**: `wss://gateway.example.com/ws?token=JWT`.
-    - Gateway valida JWT (pode delegar para Auth Service se quiser) — tipicamente valida localmente (public key) para desempenho.
-    - Gateway encaminha (proxy) a conexão WebSocket para uma instância do **Chat Service** (resolver via Eureka).
-    - Por que: Gateway atua como entrypoint e autentica antes de rotear.
-3. **Chat Service** aceita o socket, cria sessão em memória / registra sessão no Redis (com TTL) e marca presença (ex.: `presence:{userId}:online = instanceId`).
-    - Também pode publicar um evento `user.connected` no RabbitMQ se outras partes precisam saber.
-    - Por que: Chat Service gerencia sockets e presença localmente, e publica eventos para consistência global.
----
-## Caso 2 — Entrar em sala (join room)
-
-1. Cliente envia via WebSocket uma mensagem tipo `JOIN roomId` para a instância local do Chat Service.
-2. Chat Service valida se o usuário pode entrar (roles, ban, etc.) — pode consultar Auth Service se precisa de checagem extra.
-3. Chat Service adiciona usuário à lista de participantes da sala no Redis (`room:{roomId}:members`).
-4. Se necessário, Chat Service publica evento `room.member.joined` no RabbitMQ para outras instâncias se atualizarem (ou para histórico).
-5. Chat Service retorna confirmação ao cliente e, opcionalmente, envia últimas N mensagens carregadas do MongoDB (cache pode servir se disponível).
-- Por que: usar Redis para membros evita leituras no Mongo e permite baixo-latency para operações de presença; mensagens antigas ficam em Mongo para persistência.
+## Estrutura do projeto completo
+```markdown
+real-time chat/
+ ├─ .github/
+ ├─ api-gateway/
+ ├─ auth-service/
+ ├─ chat-service/
+ ├─ config-data/
+ ├─ config-server/
+ ├─ docs/
+ ├─ eureka-server/
+ ├─ frontend/
+ ├─ .env
+ ├─ .gitignore
+ ├─ LICENSE
+ ├─ README.md
+ └─ docker-compose.yml
+```
+- **`.github/`**: diretório com os workflows para rodar testes automatizados do Auth Service e do Chat Service
+- **`docs/`**: diretório contendo a documentação do projeto
+- **`config-data`**: diretório contendo os arquivos de configuração `api-gateway.properties`, `auth-service.properties` e `chat-service.properties` do API Gateway, Auth Service e Chat Service, respectivamente. O Config Server indica que os arquivos de configuração estão aí (`spring.cloud.config.server.native.search-locations=file:/config-data`) e os serviços se conectam ao Config Server para acessam suas respectivas configurações (`spring.config.import=optional:configserver:http://config-server:8888/`).
 
 ---
-## Caso 3 — Enviar mensagem
-
-1. Usuário envia `SEND {roomId, content, metadata}` via WebSocket para a instância local do Chat Service.
-2. Chat Service faz validações (antispam, length, etc.), persiste a mensagem **assíncronamente** em MongoDB (inserção) e publica o evento `message.sent` na exchange do RabbitMQ (padrão: exchange por sala ou por tópico).
-	- Persistência e publish podem ser em paralelo: publica evento imediatamente (low-latency), grava no banco em background; mas idealmente garantir persistência antes de confirmar ao cliente (trade-off). Para portfólio: gravar primeiro (consistência) é mais simples de explicar.
-3. Todas as instâncias do Chat Service interessadas nessa sala consomem a mensagem do RabbitMQ; cada instância entrega a mensagem via WebSocket aos clientes conectados a ela que estejam na sala.
-4. O Chat Service que originou a mensagem também entrega localmente (shortcut) para reduzir latência.
-5. Se o usuário estiver offline, o evento pode fazer outro serviço (ou a mesma instância) armazenar notificação para entrega futura (push/email) — opcional.
-- Por que: RabbitMQ desacopla envio e entrega, permite escalar instâncias do Chat Service sem perder mensagens.
-
----
-## Caso 4 — Desconexão / presença
-
-1. Socket fecha: Chat Service remove sessão (ou marca offline) e atualiza Redis (remove `room:{roomId}:members` entry) e publica `user.disconnected`.
-2. Outros participantes podem receber evento de presença via RabbitMQ (ou consulta a Redis).
-3. Redis TTL ajuda a recuperar de desconexões abruptas (se conexão cair sem close, TTL expira e outros detectam offline).
-- Por que: presença precisa ser rápida e eventual-consistente; Redis com TTL é prático.
-
----
-## Estrutura do código atual
+## Estrutura de cada serviço
 ### Chat Service
-
 ```markdown
 chat/
  ├─ config/
@@ -156,7 +137,7 @@ chat/
  │   └─ Room.java
  │   └─ MessageType.java
  │   └─ NotificationType.java
-  ├─ security/
+ ├─ security/
  │   ├─ JwtService.java
  │   └─ SecurityConfig.java
  ├─ websocket/
@@ -166,8 +147,61 @@ chat/
      ├─ MessageRepository.java
      └─ RoomRepository.java
 ```
+**Estrutura dde arquivos:**
+- **`RedisConfig.java`**
+	- Define o bean `RedisTemplate<String, Object>` com serialização JSON via `GenericJackson2JsonRedisSerializer`. Garante que objetos Java sejam convertidos para JSON ao serem armazenados no Redis e reconstruídos corretamente na leitura.
+- **`ChatController.java`**: Controller STOMP — processa mensagens WebSocket recebidas via `@MessageMapping`. Trata os eventos:
+	- `chat.addUser` — entrada de usuário em uma sala
+	- `chat.removeUser` — saída de usuário de uma sala
+	- `chat.sendPublic` — envio de mensagem pública em uma sala
+	- `chat.sendPrivate` — envio de mensagem privada entre dois usuários
+	Faz o dispatch das respostas via `SimpMessagingTemplate`.
+- **`MessageController.java`**
+	- Controller REST — expõe endpoints HTTP para consulta de histórico de mensagens. Fornece listagem paginada de mensagens por sala (`GET /room/{roomId}`), histórico paginado de mensagens privadas entre dois usuários e busca das mensagens recentes via cache Redis.
+- **`RoomController.java`**
+	- Controller REST — gerencia operações de sala via HTTP. Expõe criação de salas (`POST /rooms`), listagem paginada de salas (`GET /rooms`) e listagem paginada de membros por sala (`GET /rooms/{roomId}/members`).
+- **`RoomService.java`**
+	- Contém a lógica de negócio das salas. Usa `MongoTemplate` para operações atômicas: `addToSet` para adicionar membros sem race condition e `pull` para remover. Usa `RoomRepository` para consultas e verificações de existência.
+- **`MessageService.java`**
+	- Contém a lógica de negócio das mensagens. Persiste mensagens no MongoDB, mantém cache Redis das últimas 50 mensagens por sala (com TTL) e fornece fallback para o banco quando o cache está vazio ou indisponível.
+- **`CreateRoomDTO.java`**
+	- Carrega o título da nova sala enviado pelo cliente na criação via REST. Contém validação `@NotBlank`.
+- **`PrivateMessageDTO.java`**
+	- Carrega o conteúdo e o ID do destinatário de uma mensagem privada enviada via WebSocket. Validações de `@NotBlank` e `@Size`.
+- **`PublicMessageDTO.java`**
+	- Carrega o ID da sala e o conteúdo de uma mensagem pública enviada via WebSocket. Validações de `@NotBlank` e `@Size`.
+- **`UserNotificationDTO.java`**
+	- Carrega o ID da sala e o tipo de evento enviado pelo cliente ao entrar ou sair de uma sala via WebSocket. O tipo é validado pelo enum `NotificationType`
+- **`ResponseMessageDTO.java`**
+	- Representa uma mensagem serializada para o cliente. Campos: `id`, `type` (ROOM/PRIVATE), `roomId`, `senderId`, `recipientId`, `content` e `timestamp`.
+- **`UserNotificationResponseDTO.java`**
+	- Representa a notificação de presença em broadcast para os membros da sala quando um usuário entra ou sai. Campos: `type`, `userId`, `username`, `roomId`, `content` e `timestamp`.
+- **`PageResponse.java`**
+	- Wrapper genérico de paginação reutilizável para qualquer tipo de listagem. Encapsula: `content` (lista), `pageNumber`, `totalPages`, `totalElements` e `size`.
+- **`ErrorResponse.java`**
+	- Representa erros retornados ao cliente — tanto via REST (HTTP) quanto via WebSocket (fila `/queue/errors`). Campos: `message`, código de status HTTP e `timestamp`.
+- **`Message.java`**
+	- Documento MongoDB da coleção `messages`. Campos: `id`, `type`, `roomId`, `senderId`, `senderUsername`, `recipientId`, `content` e `timestamp`. Possui índices em `roomId`, `senderId`, `recipientId` e índice composto em `(roomId, timestamp)` para performance nas queries de histórico.
+- **`Room.java`**
+	- Documento MongoDB da coleção `rooms`. Campos: `id`, `title` (único, indexado) e `membersIds` (`Set<String>` de IDs de usuários). O índice único em `title` previne salas com nomes duplicados.
+- **`MessageType.java`**
+	- Enum que classifica o tipo de mensagem: `ROOM` (mensagem pública em sala) ou `PRIVATE` (mensagem direta entre dois usuários). Usado em `Message` para distinguir os dois fluxos de persistência e roteamento.
+- **`NotificationType.java`**
+	- Enum que classifica o tipo de notificação de presença: `JOIN` (usuário entrou na sala) ou `LEAVE` (usuário saiu da sala). Usado em `UserNotificationDTO` e `UserNotificationResponseDTO`.
+- **`JwtService.java`**
+	- Utilitário para parsing de tokens JWT emitidos pelo Auth Service. Extrai claims do token (`userId`, `username`), valida a assinatura usando a chave secreta compartilhada via Config Server e verifica a expiração.
+- **`SecurityConfig.java`**
+	- Configura o Spring Security: desabilita CSRF, define endpoints REST como autenticados via JWT (`oauth2ResourceServer`), e libera o endpoint WebSocket (`/ws/chat`) para que o `UserHandshakeInterceptor` trate a autenticação manualmente.
+- **`WebSocketConfig.java`**
+	- Configura o broker STOMP com relay externo no RabbitMQ (via plugin STOMP), os prefixos de destino (`/app` para controllers, `/topic` e `/queue` para subscriptions do cliente) e registra o endpoint de conexão `/ws/chat` com o `UserHandshakeInterceptor`.
+- **`UserHandshakeInterceptor.java`**
+	- Intercepta a requisição HTTP de upgrade para WebSocket. Extrai e valida o JWT do parametro da requisição (`serveltRequest.getParameter("token")`, e injeta `userId` e `username` nos atributos da sessão WebSocket. Esses atributos são consumidos pelos handlers STOMP no `ChatController`.
+- **`MessageRepository.java`**
+	- Interface Spring Data MongoDB para a coleção de mensagens. Define as queries: `findByRoomId` (paginado, para histórico de sala), `findPrivateConversation` (entre dois usuários, paginado) e `findTop50ByRoomIdOrderByTimestampDesc` (para popular o cache Redis).
+- **`RoomRepository.java`**
+	- Interface Spring Data MongoDB para a coleção de salas. Fornece: `existsByTitle` (verificação de duplicidade na criação), `findById`, `existsById` e `findAll` com `Pageable` para listagem paginada.
 
-### Auth Service
+### **Auth Service**
 ```markdown
 auth/
  ├─ config/
@@ -211,7 +245,49 @@ auth/
 		└─ migration
 			├─ V1__create_users_table.sql
 			├─ V2__create_correct_users_table.sql
-			├─ V3__create_user_roles_table.sql
+			├─ V3__rename_column.sql
+```
+**Estrutura de arquivos**
+- **`ApplicationConfig.java`** Define os beans de infraestrutura de segurança reutilizados pelo Spring Security: `PasswordEncoder` (BCrypt com strength 12), `AuthenticationProvider` (DaoAuthenticationProvider configurado com `UserDetailsServiceImpl` e o encoder) e `AuthenticationManager` exposto como bean para uso no `AuthService`.
+- **`SecurityConfig.java`** Configura o `SecurityFilterChain`: desabilita CSRF (API stateless), define os endpoints públicos via `permitAll`, aplica `SessionCreationPolicy.STATELESS`, registra o `AuthenticationProvider` e adiciona o `JwtAuthFilter` antes do filtro padrão do Spring. Também configura CORS e os handlers de resposta JSON para erros `401` e `403`.
+- **`JwtAuthFilter.java`** Filtro executado uma vez por requisição (`OncePerRequestFilter`). Extrai o token do cabeçalho `Authorization: Bearer`, valida assinatura e expiração via `JwtService`, carrega o usuário e popula o `SecurityContextHolder`. Se o token for inválido ou ausente, interrompe o filtro com `401` — a requisição não continua.
+- **`AuthController.java`** Controller REST — expõe os endpoints públicos de autenticação, todos sob `/api/v1/auth`:
+	- `POST /register` — cria novo usuário e retorna par de tokens
+	- `POST /login` — autentica credenciais e retorna par de tokens
+	- `POST /refresh` — renova o access token a partir de um refresh token válido
+- **`UserController.java`** Controller REST — expõe os endpoints protegidos de gerenciamento de usuário, sob `/api/v1/users`:
+	- `GET /me` — retorna dados do usuário autenticado
+	- `PATCH /me` — atualiza o perfil do usuário autenticado
+	- `PUT /me/password` — altera a senha do usuário autenticado
+- **`AuthService.java`**: Contém a lógica de autenticação e registro. Delega a verificação de credenciais ao `AuthenticationManager` do Spring Security (não verifica senha manualmente). No registro, constrói a entidade `User`, encoda a senha com BCrypt e persiste — capturando `DataIntegrityViolationException` como fallback para e-mail duplicado. Emite pares de tokens via método privado `issueTokens`, que delega ao `JwtService`.
+- **`JwtService.java`**: Responsável por toda a lógica de tokens JWT. Gera access tokens e refresh tokens com claims distintas (`type: "access"` / `type: "refresh"`), valida assinatura e expiração, extrai claims individuais (`sub`, `userId`) e expõe `isRefreshToken()` para distinguir os dois tipos. A chave HMAC-SHA256 é validada em startup via `@PostConstruct` — a aplicação falha imediatamente se a chave tiver menos de 32 bytes.
+- **`UserDetailsServiceImpl.java`**: Implementação do contrato `UserDetailsService` do Spring Security. Realiza apenas a busca de usuário por email via `UserRepository` para uso interno do `AuthenticationManager`. Não é injetado diretamente em controllers ou outros services.
+- **`UserService.java`** Contém a lógica de negócio de perfil e administração de usuários. Fornece: busca por email e por ID, listagem paginada, atualização de perfil (`username`), troca de senha com verificação da senha atual e desativação de conta (soft delete via `enabled = false`).
+- **`CreateUserDTO.java`** Carrega os dados de registro: `username`, `email` e `password`. Validações: `@NotBlank` em todos os campos, `@Email` no email e `@Size(min=8, max=72)` na senha.
+- **`LoginUserDTO.java`** Carrega as credenciais de login: `email` e `password`. Validações: `@NotBlank` e `@Email` no email, `@NotBlank` na senha.
+- **`RefreshRequest.java`** Carrega o refresh token para renovação. Validação: `@NotBlank`.
+- **`UpdateProfileRequest.java`** Carrega o novo `username` para atualização de perfil. Validação: `@NotBlank`.
+- **`ChangePasswordRequest.java`** Carrega `currentPassword` e `newPassword` para troca de senha. Validações: `@NotBlank` em ambos, `@Size(min=8, max=72)` na nova senha.
+- **`AuthTokenDTO.java`** Retornado nos endpoints de autenticação e renovação. Campos: `accessToken`, `refreshToken` e `expiresIn` (tempo de expiração do access token em milissegundos). Construído via factory method `AuthTokenDTO.of(...)`.
+- **`UserResponseDTO.java`** Representa os dados públicos de um usuário: `id` (UUID), `email` e `username`. Nunca expõe senha ou campos internos de controle de conta. Construído via factory method `UserResponseDTO.from(User)`.
+- **`ErrorApiResponse.java`** Representa erros retornados ao cliente. Campos: `status` (código HTTP), `message` (descrição do erro), `errors` (lista de erros de validação por campo, quando aplicável) e `timestamp`. Construído via factory method `ErrorApiResponse.of(...)`.
+- **`User.java`** Entidade JPA mapeada para a tabela `users` no PostgreSQL. Implementa `UserDetails` para integração com o Spring Security. Campos principais: `id` (UUID gerado), `username` (único), `email` (único), `password` (hash BCrypt), `role` (enum `Role`), `enabled`, campos de controle de conta e `createdAt` (auditoria imutável). O método `getAuthorities()` converte o `role` em `SimpleGrantedAuthority` com prefixo `ROLE_`.
+- **`Role.java`** Enum que define os níveis de acesso: `USER` (padrão para novos registros) e `ADMIN` (acesso às operações administrativas). Persistido como `VARCHAR` no banco via `@Enumerated(EnumType.STRING)`.
+- **`UserRepository.java`** Interface Spring Data JPA para a tabela `users`. Fornece: `findByEmail(String email)` retornando `Optional<User>` — usado tanto pela autenticação quanto pelas operações de perfil.
+- **`GlobalExceptionHandler.java`** Intercepta todas as exceções via `@RestControllerAdvice` e serializa respostas de erro no formato `ErrorApiResponse`. Trata: exceções de domínio customizadas, erros de validação (`MethodArgumentNotValidException`), exceções do Spring Security (`BadCredentialsException`, `AccessDeniedException`) e exceções JWT. Possui handler genérico para `Exception` que loga internamente e retorna `500` sem expor detalhes ao cliente.
+
+### API Gateway
+```markdown
+api-gateway/
+ ├─ src/
+ │   ├─ main/
+ │   │   ├─ java/
+ │   │   │   └─ chat/
+ │   │   │       └─ api_gateway/
+ │   │   │           └─ ApiGatewayApplication.java
+ │   │   └─ resources/
+ │   │       └─ application.properties
+ ├─ pom.xml
 ```
 
 ### Config Server
@@ -226,27 +302,9 @@ config-server/
  │   │   └─ resources/
  │   │       └─ application.properties
  ├─ pom.xml
- ├─ Dockerfile
- ├─ .gitignore
- └─ .gitattributes
 ```
 
-### API Gateway
-```markdown
-api-gateway/
- ├─ src/
- │   ├─ main/
- │   │   ├─ java/
- │   │   │   └─ chat/
- │   │   │       └─ api_gateway/
- │   │   │           └─ ApiGatewayApplication.java
- │   │   └─ resources/
- │   │       └─ application.properties
- ├─ pom.xml
- ├─ Dockerfile
-```
-
-### Eureka Server
+### Service Discovery
 ```markdown
 eureka-server/
  ├─ src/
@@ -258,14 +316,65 @@ eureka-server/
  │   │   └─ resources/
  │   │       └─ application.properties
  ├─ pom.xml
- ├─ Dockerfile
 ```
 
-## Funcionalidades básicas do usuário
-- Registro e Login (Autenticação e autorização com token JWT)
-- Criar salas
-- Entrar e sair de salas
-- Enviar mensagem públicas em salas e enviar mensagens privadas para outro usuário
-- Listar salas
-- Listar usuarios de uma sala
-- Retornar histórico de mensagens
+---
+## Fluxos principais
+### Registro de Usuário
+1. Cliente envia `POST /api/v1/auth/register` com `CreateUserDTO`.
+2. `AuthController` valida o payload via `@Valid` e delega ao `AuthService`.
+3. `AuthService` constrói a entidade `User`, encoda a senha com BCrypt e chama `userRepository.save()`.
+4. Em caso de violação de constraint (email duplicado), captura `DataIntegrityViolationException` e lança `EmailAlreadyExistsException` → resposta `409`.
+5. `AuthService` chama `issueTokens()`, que gera access token e refresh token via `JwtService`.
+6. Retorna `AuthTokenDTO` com `201 Created`.
+
+### Login
+1. Cliente envia `POST /api/v1/auth/login` com `LoginUserDTO`.
+2. `AuthController` valida o payload e delega ao `AuthService`.
+3. `AuthService` constrói um `UsernamePasswordAuthenticationToken` e chama `authenticationManager.authenticate()`.
+4. O Spring Security executa internamente: carrega o usuário via `UserDetailsServiceImpl.loadUserByUsername(email)`, verifica o hash da senha com BCrypt e valida o estado da conta.
+5. Em caso de credenciais inválidas, o Spring lança `BadCredentialsException` → `GlobalExceptionHandler` retorna `401`.
+6. `AuthService` extrai o `UserDetails` do resultado, gera os tokens e retorna `AuthTokenDTO` com `200 OK`.
+
+### Renovação de Token
+1. Cliente envia `POST /api/v1/auth/refresh` com `RefreshRequest`.
+2. `AuthService` verifica via `JwtService.isRefreshToken()` se o token é do tipo correto.
+3. Extrai o email do subject do token e busca o usuário no banco.
+4. Valida assinatura e expiração via `JwtService.isTokenValid()`.
+5. Emite novo par de tokens e retorna `AuthTokenDTO` com `200 OK`.
+
+### Requisição Autenticada
+1. Cliente envia qualquer request com cabeçalho `Authorization: Bearer {accessToken}`.
+2. `JwtAuthFilter` extrai o token, valida assinatura e expiração via `JwtService`.
+3. Carrega o usuário via `UserDetailsServiceImpl` e popula o `SecurityContextHolder`.
+4. O Spring Security libera o acesso ao endpoint conforme as regras de autorização configuradas.
+5. Controllers acessam o usuário autenticado via `Authentication authentication` injetado pelo Spring.
+
+### Troca de Senha
+1. Cliente envia `PUT /api/v1/users/me/password` com `ChangePasswordRequest` e Bearer token.
+2. `UserController` extrai o email do `Authentication` e delega ao `UserService`.
+3. `UserService` busca o usuário, verifica a senha atual com `passwordEncoder.matches()`.
+4. Se incorreta, lança `InvalidPasswordException` → resposta `422`.
+5. Encoda a nova senha e persiste com `repository.save()`.
+
+### Mensagem Pública
+1. Cliente envia frame STOMP para `/app/chat.sendPublic` com `PublicMessageDTO`.
+2. `ChatController` valida o payload (`@Valid`) e extrai `userId`/`username` dos atributos da sessão.
+3. `MessageService` persiste a mensagem no MongoDB com `type = ROOM`.
+4. `MessageService` atualiza o cache Redis da sala (lista com trim para 50 itens + TTL).
+5. `ChatController` faz broadcast via `SimpMessagingTemplate` para `/topic/rooms.{roomId}`.
+6. Todas as instâncias do serviço recebem a mensagem via relay RabbitMQ e entregam aos seus clientes conectados.
+
+### Mensagem Privada
+1. Cliente envia frame STOMP para `/app/chat.sendPrivate` com `PrivateMessageDTO`.
+2. `ChatController` extrai `senderId` da sessão e usa `messageDTO.recipientId()` como destinatário.
+3. `MessageService` persiste a mensagem com `type = PRIVATE` e `roomId = null`.
+4. `ChatController` entrega ao destinatário via `convertAndSendToUser(recipientId, "/queue/private", ...)`.
+5. `ChatController` entrega uma cópia ao remetente para confirmação de envio.
+
+### Entrada em Sala
+1. Cliente envia frame STOMP para `/app/chat.addUser` com `UserNotificationDTO`.
+2. `ChatController` extrai `userId` e `username` da sessão WebSocket.
+3. `RoomService` executa `addToSet` atômico via `MongoTemplate` — idempotente, sem race condition.
+4. `ChatController` faz broadcast de `UserNotificationResponseDTO` para `/topic/rooms.{roomId}`.
+
