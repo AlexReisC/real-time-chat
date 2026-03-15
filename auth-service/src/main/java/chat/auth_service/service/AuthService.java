@@ -78,7 +78,9 @@ public class AuthService {
     }
 
     private AuthTokenDTO issueTokens(UserDetails user) {
+        var userDTO = UserResponseDTO.from((User) user);
         return AuthTokenDTO.of(
+                userDTO,
                 jwtService.generateAccessToken(user),
                 jwtService.generateRefreshToken(user),
                 jwtService.getExpiration());
