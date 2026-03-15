@@ -9,23 +9,20 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password) => {
     const res = await authApi.login(email, password);
-    // Shape esperado: { token, refreshToken, id, username, email }
-    // Ajuste os campos conforme o DTO de resposta do AuthController
     localStorage.setItem('relay_token', res.accessToken);
     if (res.refreshToken) localStorage.setItem('relay_refresh_token', res.refreshToken);
     setToken(res.accessToken);
-    const userData = { id: res.id, username: res.username, email: res.email };
+    const userData = { id: res.user.id, username: res.user.username, email: res.user.email };
     setUser(userData);
     return userData;
   }, []);
 
   const register = useCallback(async (username, email, password) => {
     const res = await authApi.register(username, email, password);
-    // Mesmo shape do login
     localStorage.setItem('relay_token', res.accessToken);
     if (res.refreshToken) localStorage.setItem('relay_refresh_token', res.refreshToken);
     setToken(res.accessToken);
-    const userData = { id: res.id, username: res.username, email: res.email };
+    const userData = { id: res.user.id, username: res.user.username, email: res.user.email };
     setUser(userData);
     return userData;
   }, []);

@@ -1,116 +1,235 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { roomsApi, messagesApi } from '../services/api';
 import { Sidebar } from '../components/Sidebar';
 import { ChatView } from '../components/ChatView';
 import styles from './ChatPage.module.css';
 
-// ── Mock seed data — remove when backend is integrated ────────────────────────
-const SEED_ROOMS = [
-  { id: 1, name: 'geral',    members: [{ id: '1', username: 'alex', online: true }, { id: '2', username: 'maria', online: true }, { id: '3', username: 'joao', online: false }] },
-  { id: 2, name: 'frontend', members: [{ id: '1', username: 'alex', online: true }, { id: '2', username: 'maria', online: true }] },
-  { id: 3, name: 'backend',  members: [{ id: '1', username: 'alex', online: true }, { id: '3', username: 'joao', online: false }, { id: '4', username: 'pedro', online: true }] },
-];
-
-const SEED_DMS = [
-  { id: '2', username: 'maria', online: true },
-  { id: '3', username: 'joao',  online: false },
-  { id: '4', username: 'pedro', online: true },
-];
-
-const SEED_MESSAGES = {
-  'r1': [
-    { id: 'm1', fromUsername: 'joao',  content: 'Bom dia pessoal!',                      createdAt: new Date().toISOString() },
-    { id: 'm2', fromUsername: 'maria', content: 'Bom dia! Alguém olhou os novos requisitos?', createdAt: new Date().toISOString() },
-    { id: 'm3', fromUsername: 'alex',  content: 'Vi sim. Vou começar pelo service layer hoje.', createdAt: new Date().toISOString() },
-  ],
-  'd2': [
-    { id: 'm4', fromUsername: 'maria', content: 'Alex, consegue revisar meu PR?', createdAt: new Date().toISOString() },
-    { id: 'm5', fromUsername: 'alex',  content: 'Claro! Manda o link.',           createdAt: new Date().toISOString() },
-  ],
-};
-// ─────────────────────────────────────────────────────────────────────────────
-
 export function ChatPage() {
   const { user, token } = useAuth();
 
-  const [rooms, setRooms]       = useState(SEED_ROOMS);
-  const [dms, setDms]           = useState(SEED_DMS);
-  const [messages, setMessages] = useState(SEED_MESSAGES);
+  const [rooms, setRooms]           = useState([]);
+  const [dms, setDms]               = useState([]);
+  const [messages, setMessages]     = useState({});
   const [activeChat, setActiveChat] = useState(null);
+  const [loadingRooms, setLoadingRooms] = useState(true);
 
-  // Resolved metadata for the currently open chat
-  const activeChatMeta = activeChat
-    ? activeChat.startsWith('r')
-      ? { ...rooms.find(r => `r${r.id}` === activeChat), type: 'room', name: rooms.find(r => `r${r.id}` === activeChat)?.name }
-      : { ...dms.find(d => `d${d.id}` === activeChat), type: 'dm' }
-    : null;
+  // Ref para acessar activeChat dentro dos callbacks do WS sem re-registrar
+  const activeChatRef = useRef(activeChat);
+  useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
 
-  const activeMembers = activeChat?.startsWith('r')
-    ? rooms.find(r => `r${r.id}` === activeChat)?.members ?? []
-    : [];
+  // ── Carregar salas ao montar ──────────────────────────────────────────────
+  useEffect(() => {
+    roomsApi.list()
+      .then(data => {
+        // PageResponseDTO: { content, pageNumber, totalPages, totalElements, size }
+        setRooms(data.content ?? data);
+      })
+      .catch(err => console.error('Erro ao carregar salas:', err))
+      .finally(() => setLoadingRooms(false));
+  }, []);
 
-  // ── WebSocket ─────────────────────────────────────────────────────────────
+  // ── Callbacks estabilizados para o hook de WS ─────────────────────────────
+
+  /**
+   * Recebe ResponseMessageDTO normalizado pelo hook.
+   * Adiciona ao estado de mensagens usando _chatKey como índice.
+   * Se a mensagem chegou em uma conversa que não está aberta, poderia
+   * futuramente mostrar um badge de notificação — ponto de extensão natural.
+   */
   const handleIncomingMessage = useCallback((msg) => {
-    // msg shape from backend: { chatKey, id, fromUsername, content, createdAt }
-    // chatKey = 'r{roomId}' | 'd{userId}'
     setMessages(prev => ({
       ...prev,
-      [msg.chatKey]: [...(prev[msg.chatKey] ?? []), msg],
+      [msg._chatKey]: [...(prev[msg._chatKey] ?? []), msg],
     }));
   }, []);
 
-  const { send } = useWebSocket({ token, onMessage: handleIncomingMessage });
+  /**
+   * Recebe UserNotificationResponseDTO (JOIN/LEAVE).
+   * Atualiza a lista de membros da sala em tempo real.
+   *
+   * Backend envia: { type, userId, username, room_id, content, timestamp }
+   * Nota: o campo é `room_id` (snake_case) por causa do @JsonProperty no DTO Java.
+   */
+  const handleNotification = useCallback((notification) => {
+    const roomId = notification.room_id;
 
-  // ── TODO: carregar salas e histórico ao montar ───────────────────────────────
-  // useEffect(() => {
-  //   roomsApi.list().then(setRooms);
-  // }, []);
+    setRooms(prev => prev.map(room => {
+      if (String(room.id) !== String(roomId)) return room;
 
-  // ── Actions ───────────────────────────────────────────────────────────────
-  function handleSelectChat(key) {
+      const currentMembers = room.members ?? [];
+
+      if (notification.type === 'JOIN') {
+        // Evita duplicatas caso o evento chegue mais de uma vez
+        const alreadyMember = currentMembers.some(m => m.id === notification.userId);
+        if (alreadyMember) return room;
+        return {
+          ...room,
+          members: [...currentMembers, { id: notification.userId, username: notification.username }],
+        };
+      }
+
+      if (notification.type === 'LEAVE') {
+        return {
+          ...room,
+          members: currentMembers.filter(m => m.id !== notification.userId),
+        };
+      }
+
+      return room;
+    }));
+  }, []);
+
+  const handleWsError = useCallback((err) => {
+    console.error('[ChatPage] erro WS recebido:', err.message);
+    // Ponto de extensão: mostrar toast/snackbar com err.message
+  }, []);
+
+  // ── WebSocket ─────────────────────────────────────────────────────────────
+  const { joinRoom, leaveRoom, sendPublic, sendPrivate, subscribeToRoom, unsubscribeFromRoom } =
+    useWebSocket({ token, onMessage: handleIncomingMessage, onNotification: handleNotification, onError: handleWsError });
+
+  // ── Navegação entre chats ─────────────────────────────────────────────────
+  async function handleSelectChat(key) {
+    const prevChat = activeChatRef.current;
+
+    // Sair da sala anterior via STOMP se era uma sala
+    if (prevChat?.startsWith('r')) {
+      const prevRoomId = prevChat.slice(1);
+      leaveRoom(prevRoomId);
+      unsubscribeFromRoom();
+    }
+
     setActiveChat(key);
-    // TODO: se mensagens não estiverem em cache, buscar histórico do Redis:
-    // const fetch = key.startsWith('r')
-    //   ? messagesApi.roomHistory(key.slice(1))        // GET /api/v1/messages/room/{roomId}
-    //   : messagesApi.privateHistory(key.slice(1));    // GET /api/v1/messages/private/{targetUserId}
-    // fetch.then(msgs => setMessages(prev => ({ ...prev, [key]: msgs })));
+
+    const isRoom = key.startsWith('r');
+    const id     = key.slice(1);
+
+    // Carregar histórico do Redis (endpoint GET do MessageController)
+    if (!messages[key]) {
+      try {
+        const history = isRoom
+          ? await messagesApi.roomHistory(id)         // GET /api/v1/messages/room/{roomId}
+          : await messagesApi.privateHistory(id);     // GET /api/v1/messages/private/{targetUserId}
+
+        // O backend retorna List<ResponseMessageDTO> diretamente (não paginado nos endpoints de cache)
+        const list = Array.isArray(history) ? history : (history.content ?? []);
+
+        // Normaliza para o shape interno (garante senderName, _chatKey, etc.)
+        const normalized = list.map(msg => ({
+          ...msg,
+          _chatKey: key,
+        }));
+
+        setMessages(prev => ({ ...prev, [key]: normalized }));
+      } catch (err) {
+        console.error('Erro ao carregar histórico:', err);
+      }
+    }
+
+    // Entrar na nova sala via STOMP e subscrever ao tópico
+    if (isRoom) {
+      joinRoom(id);
+      subscribeToRoom(id);
+
+      // Carregar membros da sala se ainda não tiver
+      const room = rooms.find(r => String(r.id) === id);
+      if (room && !room.members) {
+        try {
+          const data = await roomsApi.members(id);
+          // GET /api/v1/rooms/{roomId}/members retorna PageResponseDTO<String> (IDs)
+          // O RoomService retorna os IDs dos membros — não há endpoint de User por ID no Chat Service.
+          // Mapeia para o shape { id, username } com username provisório até integração com Auth Service.
+          const memberIds = data.content ?? data;
+          setRooms(prev => prev.map(r =>
+            String(r.id) === id
+              ? { ...r, members: memberIds.map(uid => ({ id: uid, username: uid })) }
+              : r
+          ));
+        } catch (err) {
+          console.error('Erro ao carregar membros:', err);
+        }
+      }
+    }
   }
 
-  function handleCreateRoom(name) {
-    // TODO: roomsApi.create(name).then(room => { setRooms(prev => [...prev, room]); ... });
-    const newRoom = { id: Date.now(), name, members: [{ id: user.id, username: user.username, online: true }] };
-    setRooms(prev => [...prev, newRoom]);
-    setActiveChat(`r${newRoom.id}`);
+  // Sair da sala ao fechar o chat
+  function handleBack() {
+    const prev = activeChatRef.current;
+    if (prev?.startsWith('r')) {
+      leaveRoom(prev.slice(1));
+      unsubscribeFromRoom();
+    }
+    setActiveChat(null);
+  }
+
+  // ── CRUD de salas ─────────────────────────────────────────────────────────
+  async function handleCreateRoom(title) {
+    try {
+      // CreateRoomDTO: { title } — campo é `title`, não `name`
+      const room = await roomsApi.create(title);
+      setRooms(prev => [...prev, { ...room, members: [] }]);
+      handleSelectChat(`r${room.id}`);
+    } catch (err) {
+      console.error('Erro ao criar sala:', err);
+    }
   }
 
   function handleDeleteRoom(roomId) {
-    // TODO: roomsApi.delete(roomId).then(() => { ... });
-    setRooms(prev => prev.filter(r => r.id !== roomId));
-    if (activeChat === `r${roomId}`) setActiveChat(null);
+    // O backend não expõe DELETE de sala na spec fornecida —
+    // operação apenas local por ora (remoção da UI sem chamar API)
+    setRooms(prev => prev.filter(r => String(r.id) !== String(roomId)));
+    if (activeChat === `r${roomId}`) handleBack();
   }
 
+  // ── Envio de mensagens ────────────────────────────────────────────────────
   function handleSend(content) {
     if (!activeChat) return;
 
     const isRoom = activeChat.startsWith('r');
-    const destinationId = activeChat.slice(1);
+    const id     = activeChat.slice(1);
 
-    // Optimistic update
-    const optimisticMsg = {
-      id: `opt-${Date.now()}`,
-      fromUsername: user.username,
+    // Update otimista — usa senderName (campo correto do ResponseMessageDTO)
+    const optimistic = {
+      id:         `opt-${Date.now()}`,
+      type:       isRoom ? 'ROOM' : 'PRIVATE',
+      senderName: user.username,
+      senderId:   user.id,
+      recipientId: isRoom ? null : id,
+      roomId:     isRoom ? id : null,
       content,
-      createdAt: new Date().toISOString(),
+      timestamp:  new Date().toISOString(),
+      _chatKey:   activeChat,
+      _optimistic: true,
     };
+
     setMessages(prev => ({
       ...prev,
-      [activeChat]: [...(prev[activeChat] ?? []), optimisticMsg],
+      [activeChat]: [...(prev[activeChat] ?? []), optimistic],
     }));
 
-    // Send via WebSocket
-    send(isRoom ? 'room' : 'private', destinationId, content);
+    if (isRoom) {
+      sendPublic(id, content);
+    } else {
+      sendPrivate(id, content);
+    }
   }
+
+  // ── Dados do chat ativo ───────────────────────────────────────────────────
+  const activeChatMeta = (() => {
+    if (!activeChat) return null;
+    if (activeChat.startsWith('r')) {
+      const room = rooms.find(r => `r${r.id}` === activeChat);
+      return room ? { ...room, type: 'room', name: room.title ?? room.name } : null;
+    }
+    const dm = dms.find(d => `d${d.id}` === activeChat);
+    return dm ? { ...dm, type: 'dm' } : null;
+  })();
+
+  const activeMembers = activeChat?.startsWith('r')
+    ? rooms.find(r => `r${r.id}` === activeChat)?.members ?? []
+    : [];
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -122,6 +241,7 @@ export function ChatPage() {
         onSelectChat={handleSelectChat}
         onCreateRoom={handleCreateRoom}
         onDeleteRoom={handleDeleteRoom}
+        loading={loadingRooms}
       />
 
       <main className={styles.main}>
@@ -139,7 +259,7 @@ export function ChatPage() {
             messages={messages[activeChat] ?? []}
             members={activeMembers}
             onSend={handleSend}
-            onBack={() => setActiveChat(null)}
+            onBack={handleBack}
           />
         )}
       </main>

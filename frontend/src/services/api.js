@@ -8,7 +8,7 @@
  * TODO: set VITE_API_URL in .env  →  VITE_API_URL=http://localhost:8080
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
+const BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
 function getToken() {
   return localStorage.getItem('relay_token');
@@ -17,9 +17,7 @@ function getToken() {
 async function request(method, path, body) {
   const headers = { 'Content-Type': 'application/json' };
   const token = getToken();
-  if (path !== '/api/v1/auth/login' || path !== '/api/v1/auth/register') {
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-  }
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
@@ -36,74 +34,76 @@ async function request(method, path, body) {
   return res.json();
 }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+// ── Auth — /api/v1/auth ───────────────────────────────────────────────────────
 
 export const authApi = {
-  //** POST /api/v1/auth/login → { token, refreshToken, ... } */
+  /** POST /api/v1/auth/login → { token, refreshToken, ... } */
   login: (email, password) =>
     request('POST', '/api/v1/auth/login', { email, password }),
 
   /** POST /api/v1/auth/register → { token, refreshToken, ... } */
   register: (username, email, password) =>
     request('POST', '/api/v1/auth/register', { username, email, password }),
- 
+
   /** POST /api/v1/auth/refresh → { token } */
   refresh: (refreshToken) =>
     request('POST', '/api/v1/auth/refresh', { refreshToken }),
 };
 
-// ── User ──────────────────────────────────────────────────────────────────────
+// ── User — /api/v1/users ──────────────────────────────────────────────────────
 
 export const userApi = {
   /** GET /api/v1/users/me → User */
   me: () =>
     request('GET', '/api/v1/users/me'),
- 
+
   /** PATCH /api/v1/users/me → User (atualizar username) */
   updateMe: (username) =>
     request('PATCH', '/api/v1/users/me', { username }),
- 
+
   /** PUT /api/v1/users/me/password → 204 */
   updatePassword: (currentPassword, newPassword) =>
     request('PUT', '/api/v1/users/me/password', { currentPassword, newPassword }),
 };
 
-// ── Rooms ─────────────────────────────────────────────────────────────────────
+// ── Rooms — /api/v1/rooms ─────────────────────────────────────────────────────
 
 export const roomsApi = {
   /** GET /api/v1/rooms → Room[] */
   list: () =>
     request('GET', '/api/v1/rooms'),
- 
-  /** POST /api/v1/rooms → Room */
-  create: (name) =>
-    request('POST', '/api/v1/rooms', { name }),
- 
+
+  /** POST /api/v1/rooms → Room  —  CreateRoomDTO usa `title`, não `name` */
+  create: (title) =>
+    request('POST', '/api/v1/rooms', { title }),
+
   /** GET /api/v1/rooms/{roomId}/members → User[] */
   members: (roomId) =>
     request('GET', `/api/v1/rooms/${roomId}/members`),
 };
 
-// ── Messages ──────────────────────────────────────────────────────────────────
+// ── Messages — /api/v1/messages ───────────────────────────────────────────────
 
 export const messagesApi = {
   /**
    * GET /api/v1/messages/room/{roomId}
-   * Histórico da sala carregado do cache Redis.
+   * Retorna List<ResponseMessageDTO> do cache Redis (não paginado).
+   * Fallback automático para MongoDB se o cache estiver vazio.
    */
   roomHistory: (roomId) =>
     request('GET', `/api/v1/messages/room/${roomId}`),
- 
+
   /**
    * GET /api/v1/messages/private
    * Lista as conversas privadas do usuário autenticado.
    */
   privateConversations: () =>
     request('GET', '/api/v1/messages/private'),
- 
+
   /**
    * GET /api/v1/messages/private/{targetUserId}
-   * Histórico de mensagens privadas com um usuário específico, do cache Redis.
+   * Retorna List<ResponseMessageDTO> do cache Redis com o usuário alvo.
+   * Fallback automático para MongoDB se o cache estiver vazio.
    */
   privateHistory: (targetUserId) =>
     request('GET', `/api/v1/messages/private/${targetUserId}`),

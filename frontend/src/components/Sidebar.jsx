@@ -41,9 +41,10 @@ export function Sidebar({
   }
 
   function handleCreateRoom() {
-    const name = roomName.trim().toLowerCase().replace(/\s+/g, '-');
-    if (name.length < 2) { setRoomError('Mínimo 2 caracteres'); return; }
-    onCreateRoom(name);
+    // CreateRoomDTO usa `title` — sanitiza para slug simples
+    const title = roomName.trim().toLowerCase().replace(/\s+/g, '-');
+    if (title.length < 2) { setRoomError('Mínimo 2 caracteres'); return; }
+    onCreateRoom(title);
     setNewRoomOpen(false);
   }
 
@@ -108,7 +109,7 @@ export function Sidebar({
             >
               <div className={styles.itemIcon}>#</div>
               <div className={styles.itemInfo}>
-                <div className={styles.itemName}>{room.name}</div>
+                <div className={styles.itemName}>{room.title ?? room.name}</div>
                 <div className={styles.itemMeta}>{room.members?.length ?? 0} membros</div>
               </div>
               <button

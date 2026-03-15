@@ -79,19 +79,20 @@ export function ChatView({ chat, messages, members, onSend, onBack }) {
             <>
               <div className={styles.dateSep}>Hoje</div>
               {messages.map((msg, i) => {
-                const isOwn = msg.fromUsername === user?.username;
-                const prevMsg = messages[i - 1];
-                const showMeta = !prevMsg || prevMsg.fromUsername !== msg.fromUsername;
+                const senderName = msg.senderName;
+                const isOwn      = msg.senderId === user?.id;
+                const prevMsg    = messages[i - 1];
+                const showMeta   = !prevMsg || prevMsg.senderId !== msg.senderId;
 
                 return (
                   <div key={msg.id ?? i} className={`${styles.msgRow} ${isOwn ? styles.own : ''}`}>
                     <div className={`${styles.msgAvatar} ${isOwn ? styles.ownAvatar : ''}`}>
-                      {initials(msg.fromUsername)}
+                      {initials(senderName ?? '?')}
                     </div>
                     <div className={styles.msgContent}>
                       {showMeta && (
                         <div className={styles.msgMeta}>
-                          {msg.fromUsername} · {formatTime(msg.createdAt)}
+                          {senderName} · {formatTime(msg.timestamp ?? msg.createdAt)}
                         </div>
                       )}
                       <div className={`${styles.bubble} ${isOwn ? styles.ownBubble : ''}`}>
