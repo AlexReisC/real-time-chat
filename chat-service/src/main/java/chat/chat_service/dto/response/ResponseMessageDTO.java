@@ -8,6 +8,7 @@ public record ResponseMessageDTO(
         MessageType type,
         String roomId,
         String senderId,
+        String senderName,
         String recipientId,
         String content,
         Instant timestamp

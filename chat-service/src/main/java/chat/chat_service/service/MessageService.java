@@ -44,15 +44,7 @@ public class MessageService {
         roomService.existById(message.getRoomId());
 
         Message savedMessage = messageRepository.save(message);
-        ResponseMessageDTO savedDto = new ResponseMessageDTO(
-                savedMessage.getId(),
-                savedMessage.getType(),
-                savedMessage.getRoomId(),
-                savedMessage.getSenderId(),
-                savedMessage.getRecipientId(),
-                savedMessage.getContent(),
-                savedMessage.getTimestamp()
-        );
+        ResponseMessageDTO savedDto = toResponseDTO(savedMessage);
 
         cacheMessage(savedDto);
 
@@ -111,6 +103,7 @@ public class MessageService {
                 message.getType(),
                 message.getRoomId(),
                 message.getSenderId(),
+                message.getSenderUsername(),
                 message.getRecipientId(),
                 message.getContent(),
                 message.getTimestamp()
@@ -122,15 +115,7 @@ public class MessageService {
 
         Message savedMessage = messageRepository.save(message);
 
-        ResponseMessageDTO savedDto = new ResponseMessageDTO(
-                savedMessage.getId(),
-                savedMessage.getType(),
-                savedMessage.getRoomId(),
-                savedMessage.getSenderId(),
-                savedMessage.getRecipientId(),
-                savedMessage.getContent(),
-                savedMessage.getTimestamp()
-        );
+        ResponseMessageDTO savedDto = toResponseDTO(savedMessage);
 
         cacheMessage(savedDto);
         return savedDto;
