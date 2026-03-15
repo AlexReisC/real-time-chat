@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 public class UserService {
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final StringRedisTemplate redisTemplate;
 
     public User findByEmail(String email) {
         return repository.findByEmail(email)
@@ -41,7 +43,12 @@ public class UserService {
     public User updateProfile(String email, UpdateProfileRequest req) {
         var user = findByEmail(email);
         user.setDisplayName(req.username());
-        return repository.save(user);
+        User updatedUser = repository.save(user);
+
+        String redisKey = "user:" + updatedUser.getId() + ":username";
+        redisTemplate.opsForValue().set(redisKey, req.username());
+
+        return updatedUser;
     }
 
     @Transactional

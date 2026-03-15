@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Set;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -30,6 +31,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final StringRedisTemplate redisTemplate;
     
     public AuthTokenDTO login(LoginUserDTO loginUserDTO) {
         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
@@ -57,6 +59,10 @@ public class AuthService {
                     .build();
 
             var saved = userRepository.save(user);
+            
+            String redisKey = "user:" + saved.getId() + ":username";
+            redisTemplate.opsForValue().set(redisKey, saved.getUsername());
+
             return issueTokens(saved);
         } catch (DataIntegrityViolationException e) {
             throw new EmailAlreadyExistsException("O email já está em uso");
