@@ -17,7 +17,7 @@ public record CreateUserDTO(
         @NotBlank(message = "A senha é obrigatória")
         @Size(min = 8, max = 72, message = "A senha deve conter entre 8 e 72 caracteres")
         @Pattern(regexp = "(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]+",
-                message = "A senha deve conter pelo menos uma letra maiúscula, uma letra minúscula, um número e um caractere especial")
+                message = "A senha deve ter no mínimo 8 caracteres com pelo menos uma letra maiúscula, um número e um caractere especial")
         String password
 ) {
 }

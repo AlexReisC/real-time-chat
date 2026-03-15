@@ -11,6 +11,6 @@ public record ChangePasswordRequest(
         @NotBlank 
         @Size(min = 8)
         @Pattern(regexp = "(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]+",
-                message = "A senha deve conter pelo menos uma letra maiúscula, uma letra minúscula, um número e um caractere especial")
+                message = "A senha deve ter no mínimo 8 caracteres com pelo menos uma letra maiúscula, um número e um caractere especial")
         String newPassword
 ) { }
