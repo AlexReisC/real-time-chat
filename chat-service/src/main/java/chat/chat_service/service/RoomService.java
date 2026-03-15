@@ -3,6 +3,7 @@ package chat.chat_service.service;
 import chat.chat_service.dto.response.PageResponseDTO;
 import chat.chat_service.exception.EntityAlreadyExistsException;
 import chat.chat_service.exception.RoomNotFoundException;
+import chat.chat_service.model.Message;
 import chat.chat_service.model.Room;
 import chat.chat_service.repository.RoomRepository;
 
@@ -12,6 +13,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.mongodb.client.result.UpdateResult;
@@ -24,11 +26,13 @@ import java.util.Set;
 @Service
 public class RoomService {
     private final RoomRepository roomRepository;
-    private final MongoTemplate mongoTemplate;;
+    private final MongoTemplate mongoTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    public RoomService(RoomRepository roomRepository, MongoTemplate mongoTemplate) {
+    public RoomService(RoomRepository roomRepository, MongoTemplate mongoTemplate, RedisTemplate<String, Object> redisTemplate) {
         this.roomRepository = roomRepository;
         this.mongoTemplate = mongoTemplate;
+        this.redisTemplate = redisTemplate;
     }
 
     public void existById(String roomId) {
@@ -111,4 +115,17 @@ public class RoomService {
         );
     }
 
+    public void deleteRoom(String roomId) {
+        if (!roomRepository.existsById(roomId)) {
+            throw new RoomNotFoundException("Sala não encontrada");
+        }
+        
+        roomRepository.deleteById(roomId);
+
+        Query deleteMessagesQuery = new Query(Criteria.where("roomId").is(roomId));
+        mongoTemplate.remove(deleteMessagesQuery, Message.class);
+        
+        String cacheKey = "room:" + roomId + ":messages";
+        redisTemplate.delete(cacheKey);
+    }
 }

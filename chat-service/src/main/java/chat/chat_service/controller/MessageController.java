@@ -74,10 +74,8 @@ public class MessageController {
     public ResponseEntity<List<ConversationSummaryDTO>> listActiveConversations(
             @AuthenticationPrincipal Jwt jwt
     ) {
-        // Extrai o ID do utilizador autenticado a partir do token
         String currentUserId = jwt.getClaimAsString("userId");
         
-        // Chama o serviço para obter a lista de resumos
         List<ConversationSummaryDTO> conversations = messageService.getUserPrivateConversations(currentUserId);
         
         return ResponseEntity.ok(conversations);
