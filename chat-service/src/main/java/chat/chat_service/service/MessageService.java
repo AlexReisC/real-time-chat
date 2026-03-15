@@ -2,8 +2,11 @@ package chat.chat_service.service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -11,10 +14,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import chat.chat_service.dto.request.PublicMessageDTO;
+import chat.chat_service.dto.request.ConversationSummaryDTO;
 import chat.chat_service.dto.request.PrivateMessageDTO;
 import chat.chat_service.dto.response.PageResponseDTO;
 import chat.chat_service.dto.response.ResponseMessageDTO;
@@ -30,11 +38,13 @@ public class MessageService {
     private final RedisTemplate<String, Object> redisTemplate;
     private static final int MAX_CACHED_MESSAGES = 50;
     private static final Logger logger = LoggerFactory.getLogger(MessageService.class);
+    private final MongoTemplate mongoTemplate;
 
-    public MessageService(MessageRepository messageRepository, RoomService roomService, RedisTemplate<String, Object> redisTemplate) {
+    public MessageService(MessageRepository messageRepository, RoomService roomService, RedisTemplate<String, Object> redisTemplate, MongoTemplate mongoTemplate) {
         this.messageRepository = messageRepository;
         this.roomService = roomService;
         this.redisTemplate = redisTemplate;
+        this.mongoTemplate = mongoTemplate;
     }
 
     public ResponseMessageDTO savePublicMessage(PublicMessageDTO messageDTO, String senderId, String senderUsername){
@@ -242,5 +252,44 @@ public class MessageService {
         List<ResponseMessageDTO> fallbackMessages = dbSupplier.get();
         Collections.reverse(fallbackMessages);
         return fallbackMessages;
+    }
+
+    public List<ConversationSummaryDTO> getUserPrivateConversations(String userId) {
+        Criteria criteria = Criteria.where("type").is(MessageType.PRIVATE)
+                .orOperator(
+                        Criteria.where("senderId").is(userId),
+                        Criteria.where("recipientId").is(userId)
+                );
+
+        Query query = new Query(criteria).with(Sort.by(Sort.Direction.DESC, "timestamp"));
+
+        List<Message> userMessages = mongoTemplate.find(query, Message.class);
+
+        List<ConversationSummaryDTO> summaries = new ArrayList<>();
+        Set<String> processedContacts = new HashSet<>();
+
+        for (Message msg : userMessages) {
+            String contactId = msg.getSenderId().equals(userId) ? msg.getRecipientId() : msg.getSenderId();
+
+            if (!processedContacts.contains(contactId)) {
+                processedContacts.add(contactId);
+                
+                String redisKey = "user:" + contactId + ":username";
+                String contactUsername = (String) redisTemplate.opsForValue().get(redisKey);
+
+                if (contactUsername == null) {
+                    contactUsername = "Utilizador Desconhecido"; 
+                }
+
+                summaries.add(new ConversationSummaryDTO(
+                        contactId,
+                        contactUsername,
+                        msg.getContent(),
+                        msg.getTimestamp()
+                ));
+            }
+        }
+
+        return summaries;
     }
 }
