@@ -7,9 +7,13 @@ import io.jsonwebtoken.security.InvalidKeyException;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+
+import chat.auth_service.entity.User;
 
 import javax.crypto.SecretKey;
 
@@ -20,6 +24,8 @@ import java.util.Map;
 
 @Service
 public class JwtService {
+    private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
+
     @Value("${jwt.secret}")
     private String jwtSecret;
 
@@ -56,10 +62,17 @@ public class JwtService {
     private String buildToken(UserDetails user, long jwtExpirationMs, Map<String, Object> additionalClaims) {
         try {
             var now = Instant.now();
-            return Jwts.builder()
+            var builder = Jwts.builder()
+                .claims(additionalClaims);
+
+            if (user instanceof User) {
+                builder.claim("userId", ((User) user).getId());
+            }
+            
+            logger.info("getUsername retorna o email: {}", user.getUsername());
+            return builder
                     .issuer(ISSUER)
                     .subject(user.getUsername())
-                    .claims(additionalClaims)
                     .issuedAt(Date.from(now))
                     .expiration(Date.from(now.plusMillis(jwtExpirationMs)))
                     .signWith(getSigninKey())
@@ -102,7 +115,7 @@ public class JwtService {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (JwtException | IllegalArgumentException e) {
-            throw new JwtException("Erro ao analisar as claims. JWT inválido.", e);
+            throw new JwtException("Erro ao analisar as claims: " + e.getMessage(), e);
         }
     }
 }
