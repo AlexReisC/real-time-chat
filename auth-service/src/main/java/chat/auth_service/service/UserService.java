@@ -40,7 +40,7 @@ public class UserService {
     @Transactional
     public User updateProfile(String email, UpdateProfileRequest req) {
         var user = findByEmail(email);
-        user.setUsername(req.username());
+        user.setDisplayName(req.username());
         return repository.save(user);
     }
 

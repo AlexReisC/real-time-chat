@@ -21,7 +21,7 @@ public record UserResponseDTO(
 		return new UserResponseDTO(
 				user.getId(),
 				user.getEmail(),
-				user.getUsername(),
+				user.getDisplayName(),
 				roles);
 	}
 }

@@ -48,9 +48,8 @@ public class User implements UserDetails{
     @ToString.Include
     private UUID id;
 
-    @Getter(value = AccessLevel.NONE)
-    @Column(length = 50, nullable = false, unique = true)
-    private String username;
+    @Column(length = 50, nullable = false, unique = true, name = "display_name")
+    private String displayName;
 
     @Column(nullable = false, unique = true, length = 100)
     private String email;

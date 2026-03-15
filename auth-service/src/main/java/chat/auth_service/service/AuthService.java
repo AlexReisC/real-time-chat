@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import chat.auth_service.dto.request.CreateUserDTO;
 import chat.auth_service.dto.request.LoginUserDTO;
 import chat.auth_service.dto.response.AuthTokenDTO;
+import chat.auth_service.dto.response.UserResponseDTO;
 import chat.auth_service.entity.Role;
 import chat.auth_service.entity.User;
 import chat.auth_service.exception.EmailAlreadyExistsException;
@@ -49,7 +50,7 @@ public class AuthService {
             user = User.builder()
                     .email(createUserDTO.email())
                     .password(passwordEncoder.encode(createUserDTO.password()))
-                    .username(createUserDTO.username())
+                    .displayName(createUserDTO.username())
                     .roles(Set.of(Role.USER))
                     .build();
 
