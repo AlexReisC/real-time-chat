@@ -32,7 +32,7 @@ O projeto implementa um sistema de chat em tempo real com suporte a salas de cha
 - **RabbitMQ** - Message broker para comunicação entre serviços
 
 ## Frontend
-- Em breve
+- VanillaJS (HTML, CSS, JavaScript sem frameworks)
 
 ### DevOps
 - **Docker** - Containerização
@@ -83,41 +83,36 @@ cd real-time-chat
 
 2. Inicie os serviços de infraestrutura com Docker Compose:
 ```bash
-docker-compose up -d
-```
-
-3. Execute os serviços Spring Boot:
-
-Para o Auth Service:
-```bash
-cd auth-service
-mvn spring-boot:run
-```
-
-Para o Chat Service:
-```bash
-cd chat-service
-mvn spring-boot:run
+docker-compose up -d --build
 ```
 
 ## Endpoints Principais
 
 ### Auth Service
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| POST | `/auth/register` | Registrar novo usuário |
-| POST | `/auth/login` | Autenticar usuário e gerar JWT |
-| GET | `/auth/validate` | Validar token JWT |
-| GET | `/auth/me` | Retornar informações do usuário |
+| Método  | Endpoint              | Descrição                                   |
+| ------- | --------------------- | ------------------------------------------- |
+| `POST`  | `/auth/register`      | Registrar novo usuário                      |
+| `POST`  | `/auth/login`         | Autenticar usuário e gerar JWT              |
+| `POST`  | `/auth/refresh`       | Refresh do token                            |
+| `GET`   | `/users/me`           | Retornar informações do usuário autenticado |
+| `PATCH` | `/users/me`           | Atualizar nome de usuário (username)        |
+| `PUT`   | `/users//me/password` | Atualizar a senha do usuário autenticado    |
 
 ### Chat Service
-| Tipo | Endpoint | Descrição |
-|------|----------|-----------|
-| WS | `/ws/chat` | Conectar ao WebSocket |
-| GET | `/chat/messages/{roomId}` | Buscar histórico de mensagens |
-| POST | `/chat/rooms` | Criar nova sala |
-| GET | `/chat/rooms` | Listar salas disponíveis |
-| GET | `/chat/rooms/{roomId}/users` | Listar usuários da sala |
+| Tipo     | Endpoint                                   | Descrição                                                                |
+| -------- | ------------------------------------------ | ------------------------------------------------------------------------ |
+| `WS`     | `/ws/chat`                                 | Conectar-se ao chat (envia JWT no handshake)                             |
+| `GET`    | `/chat/messages/{roomId}`                  | Buscar histórico de mensagens                                            |
+| `POST`   | `/rooms`                                   | Criar nova sala de chat                                                  |
+| `GET`    | `/rooms`                                   | Listar todas as salas disponíveis                                        |
+| `GET`    | `/rooms/{roomId}/members`                  | Listar todos os usuários conectados em uma sala                          |
+| `GET`    | `/messages/room/{roomId}/history`          | Listar todos as mensagens (páginadas) de uma sala                        |
+| `GET`    | `/messages/private/{targetUserId}`/history | Listar todas as mensagens (páginadas) de uma conversa privada            |
+| `GET`    | `messages/private/{targetUserId}`          | Carregamento das mensagens (50 últimas) do cache de uma conversa privada |
+| `GET`    | `/messages/room/{roomId}`                  | Carregamento dedas mensagens (50 últimas) do cache de uma sala           |
+| `GET`    | `/private/conversations`                   | Listar as conversas existentes do usuário                                |
+| `DELETE` | `rooms/{roomId}`                           | Deletar uma sala                                                         |
+| `DELETE` | `rooms/{roomId}/members`                   | Remove o usuário permanentemente de uma sala                             |
 
 ## Contribuição
 
