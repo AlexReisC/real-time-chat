@@ -1,5 +1,6 @@
 package chat.auth_service.service;
 
+import java.time.Instant;
 import java.util.Set;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -52,6 +53,7 @@ public class AuthService {
                     .password(passwordEncoder.encode(createUserDTO.password()))
                     .displayName(createUserDTO.username())
                     .roles(Set.of(Role.USER))
+                    .createdAt(Instant.now())
                     .build();
 
             var saved = userRepository.save(user);
