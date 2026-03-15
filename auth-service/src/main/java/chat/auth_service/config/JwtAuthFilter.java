@@ -34,6 +34,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (recoveredToken == null) {
             filterChain.doFilter(request, response);
             return;
+        } else {
+            logger.info("Token extraído do cabeçalho: [{}]", recoveredToken);
         }
 
         try {
