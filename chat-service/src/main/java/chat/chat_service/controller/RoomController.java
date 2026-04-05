@@ -69,6 +69,30 @@ public class RoomController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{roomId}/members")
+    public ResponseEntity<Room> joinRoom(
+            @PathVariable @NotBlank(message = "O ID da sala é obrigatório") String roomId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        String currentUserId = jwt.getClaimAsString("userId");
+        String currentUsername = jwt.getClaimAsString("userDisplayName");
+
+        Room updatedRoom = roomService.addNewUser(roomId, currentUserId);
+
+        UserNotificationResponseDTO joinNotification = new UserNotificationResponseDTO(
+                NotificationType.JOIN,
+                currentUserId,
+                currentUsername,
+                roomId,
+                currentUsername + " entrou na sala.",
+                Instant.now()
+        );
+
+        messagingTemplate.convertAndSend("/topic/rooms." + roomId, joinNotification);
+
+        return ResponseEntity.ok(updatedRoom);
+    }
+
     @DeleteMapping("/{roomId}/members")
     public ResponseEntity<Void> leaveRoom(
             @PathVariable @NotBlank(message = "O ID da sala é obrigatório") String roomId,

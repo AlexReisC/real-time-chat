@@ -53,7 +53,7 @@ public class RoomService {
         return mongoTemplate.insert(room);
     }
 
-    public void addNewUser(String roomId, String userId){
+    public Room addNewUser(String roomId, String userId){
         UpdateResult result = mongoTemplate.updateFirst(
             Query.query(Criteria.where("id").is(roomId).and("membersIds").ne(userId)),
             new Update().addToSet("membersIds", userId),
@@ -61,13 +61,14 @@ public class RoomService {
         );
 
         if (result.getMatchedCount() == 0) {
-            roomRepository.findById(roomId).ifPresent(room -> {
-                if (room.getMembersIds().contains(userId)) {
-                    throw new EntityAlreadyExistsException("Usuário já é membro da sala");
-                }
-            });
-            throw new RoomNotFoundException("Sala não encontrada");
+            Room room = roomRepository.findById(roomId).orElseThrow(() -> new RoomNotFoundException("Sala não encontrada"));
+            if (room.getMembersIds().contains(userId)) {
+                throw new EntityAlreadyExistsException("Usuário já é membro da sala");
+            }
+            return room;
         }
+
+        return roomRepository.findById(roomId).orElseThrow(() -> new RoomNotFoundException("Sala não encontrada"));
     }
 
     public void removeUser(String roomId, String userId) {
