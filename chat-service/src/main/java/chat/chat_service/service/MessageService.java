@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -20,6 +21,8 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import chat.chat_service.dto.request.PublicMessageDTO;
 import chat.chat_service.dto.request.ConversationSummaryDTO;
@@ -39,12 +42,14 @@ public class MessageService {
     private static final int MAX_CACHED_MESSAGES = 50;
     private static final Logger logger = LoggerFactory.getLogger(MessageService.class);
     private final MongoTemplate mongoTemplate;
+    private final ObjectMapper objectMapper;
 
-    public MessageService(MessageRepository messageRepository, RoomService roomService, RedisTemplate<String, Object> redisTemplate, MongoTemplate mongoTemplate) {
+    public MessageService(MessageRepository messageRepository, RoomService roomService, RedisTemplate<String, Object> redisTemplate, MongoTemplate mongoTemplate, ObjectMapper objectMapper) {
         this.messageRepository = messageRepository;
         this.roomService = roomService;
         this.redisTemplate = redisTemplate;
         this.mongoTemplate = mongoTemplate;
+        this.objectMapper = objectMapper;
     }
 
     public ResponseMessageDTO savePublicMessage(PublicMessageDTO messageDTO, String senderId, String senderUsername){
@@ -200,8 +205,9 @@ public class MessageService {
                 if (cachedObjects != null && !cachedObjects.isEmpty()) {
                     return cachedObjects.stream()
                             .map(obj -> {
-                                if (obj instanceof ResponseMessageDTO dto) return dto;
-                                if (obj instanceof Message msg) return toResponseDTO(msg);
+                                if (obj instanceof LinkedHashMap) {
+                                    return objectMapper.convertValue(obj, ResponseMessageDTO.class);
+                                }
                                 return (ResponseMessageDTO) obj;
                             })
                             .collect(Collectors.toList());
