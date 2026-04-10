@@ -54,7 +54,6 @@ public class ChatController {
         String roomId = notificationDTO.roomId();
         headerAccessor.getSessionAttributes().put("roomId", roomId);
 
-        roomService.addNewUser(roomId, userId);
         logger.info("Usuário {} ({}) entrou na sala {}", username, userId, roomId);
 
         UserNotificationResponseDTO response = new UserNotificationResponseDTO(
