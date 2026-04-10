@@ -1,6 +1,7 @@
 package chat.chat_service.service;
 
 import chat.chat_service.dto.response.PageResponseDTO;
+import chat.chat_service.dto.response.RoomMemberDTO;
 import chat.chat_service.exception.EntityAlreadyExistsException;
 import chat.chat_service.exception.RoomNotFoundException;
 import chat.chat_service.model.Message;
@@ -13,23 +14,25 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.mongodb.client.result.UpdateResult;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class RoomService {
     private final RoomRepository roomRepository;
     private final MongoTemplate mongoTemplate;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate redisTemplate;
 
-    public RoomService(RoomRepository roomRepository, MongoTemplate mongoTemplate, RedisTemplate<String, Object> redisTemplate) {
+    public RoomService(RoomRepository roomRepository, MongoTemplate mongoTemplate, StringRedisTemplate redisTemplate) {
         this.roomRepository = roomRepository;
         this.mongoTemplate = mongoTemplate;
         this.redisTemplate = redisTemplate;
@@ -86,24 +89,42 @@ public class RoomService {
         );
     }
 
-    public PageResponseDTO<String> listAllMembersByRoom(String roomId, Pageable pageable) {
+    public PageResponseDTO<RoomMemberDTO> listAllUsersByRoom(String roomId, Pageable pageable) {
         Room room = roomRepository.findById(roomId)
             .orElseThrow(() -> new RoomNotFoundException("Sala não encontrada"));
 
-        List<String> membersList = new ArrayList<>(room.getMembersIds());
-        int total = membersList.size();
+        Set<String> memberIds = room.getMembersIds();
+
+        if (memberIds == null || memberIds.isEmpty()) {
+            return new PageResponseDTO<>(Collections.emptyList(), pageable.getPageNumber(), 0, 0, pageable.getPageSize());
+        }
+
+        List<String> redisKeys = memberIds.stream()
+            .map(id -> "user:" + id + ":username")
+            .collect(Collectors.toList());
+
+        List<String> usernamesFromRedis = redisTemplate.opsForValue().multiGet(redisKeys);
         
+        List<RoomMemberDTO> membersList = new ArrayList<>();
+        int index = 0;
+        for (String memberId : memberIds) {
+            String username = "Usuário Desconecido";
+            if (usernamesFromRedis != null && usernamesFromRedis.get(index) != null) {
+                username = usernamesFromRedis.get(index);
+            }
+            membersList.add(new RoomMemberDTO(memberId, username));
+            index++;
+        }
+        
+        int size = membersList.size();
         int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), total);
-        
-        List<String> pageContent = membersList.subList(start, end);
-        int totalPages = (int) Math.ceil((double) total / pageable.getPageSize());
-        
+        int end = Math.min((start + pageable.getPageSize()), size);
+        List<RoomMemberDTO> pagedMembers = membersList.subList(start, end);
         return new PageResponseDTO<>(
-            pageContent,
+            pagedMembers,
             pageable.getPageNumber(),
-            totalPages,
-            total,
+            (int) Math.ceil((double) size / pageable.getPageSize()),
+            size,
             pageable.getPageSize()
         );
     }
