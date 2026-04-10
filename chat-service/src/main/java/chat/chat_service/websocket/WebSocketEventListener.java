@@ -10,15 +10,12 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import chat.chat_service.dto.response.UserNotificationResponseDTO;
 import chat.chat_service.model.NotificationType;
-import chat.chat_service.service.RoomService;
 
 @Component
 public class WebSocketEventListener {
-    private final RoomService roomService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    public WebSocketEventListener(RoomService roomService, SimpMessagingTemplate messagingTemplate) {
-        this.roomService = roomService;
+    public WebSocketEventListener(SimpMessagingTemplate messagingTemplate) {
         this.messagingTemplate = messagingTemplate;
     }
 
@@ -30,8 +27,6 @@ public class WebSocketEventListener {
         String roomId = (String) headerAccessor.getSessionAttributes().get("roomId");
 
         if (userId != null) {
-            roomService.removeUser(roomId, userId);
-            
             UserNotificationResponseDTO response = new UserNotificationResponseDTO(
                     NotificationType.LEAVE, userId, username, roomId, username + " saiu da sala (desconectado)", Instant.now()
             );

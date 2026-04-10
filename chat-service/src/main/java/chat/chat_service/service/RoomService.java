@@ -54,19 +54,11 @@ public class RoomService {
     }
 
     public Room addNewUser(String roomId, String userId){
-        UpdateResult result = mongoTemplate.updateFirst(
+        mongoTemplate.updateFirst(
             Query.query(Criteria.where("id").is(roomId).and("membersIds").ne(userId)),
             new Update().addToSet("membersIds", userId),
             Room.class
         );
-
-        if (result.getMatchedCount() == 0) {
-            Room room = roomRepository.findById(roomId).orElseThrow(() -> new RoomNotFoundException("Sala não encontrada"));
-            if (room.getMembersIds().contains(userId)) {
-                throw new EntityAlreadyExistsException("Usuário já é membro da sala");
-            }
-            return room;
-        }
 
         return roomRepository.findById(roomId).orElseThrow(() -> new RoomNotFoundException("Sala não encontrada"));
     }
