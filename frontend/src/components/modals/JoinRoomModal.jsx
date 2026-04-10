@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Modal } from './Modal.jsx';
 import { roomsApi } from '../../api/rooms.js';
+import { useChat } from '../../context/ChatContext.jsx';
 
 export function JoinRoomModal({ room, onJoin, onClose }) {
+  const { updateRoom } = useChat();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -11,8 +13,9 @@ export function JoinRoomModal({ room, onJoin, onClose }) {
     setError('');
     try {
       // REST: add current user to room members
-      await roomsApi.addMember(room.id);
-      onJoin(room);
+      const updatedRoom = await roomsApi.addMember(room.id);
+      updateRoom(updatedRoom);
+      onJoin(updatedRoom);
       onClose();
     } catch (err) {
       // 409 means already a member — proceed anyway

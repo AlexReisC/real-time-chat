@@ -1,15 +1,27 @@
 import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useChat } from '../../context/ChatContext.jsx';
 import { JoinRoomModal } from '../modals/JoinRoomModal.jsx';
 import { ConfirmModal } from '../modals/ConfirmModal.jsx';
 import { roomsApi } from '../../api/rooms.js';
 
 export function RoomItem({ room, onJoin }) {
+  const { user } = useAuth();
   const { activeChat, removeRoom } = useChat();
   const isActive = activeChat?.type === 'room' && activeChat.data.id === room.id;
 
   const [showJoin, setShowJoin] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+
+  const isMember = room.membersIds?.includes(user?.id);
+
+  function handleClick() {
+    if (isMember) {
+      onJoin(room);
+    } else {
+      setShowJoin(true);
+    }
+  }
 
   async function handleDelete() {
     await roomsApi.delete(room.id);
@@ -21,7 +33,7 @@ export function RoomItem({ room, onJoin }) {
       <li className={`nav-item ${isActive ? 'nav-item--active' : ''}`}>
         <button
           className="nav-item__label"
-          onClick={() => setShowJoin(true)}
+          onClick={handleClick}
           title={room.title}
         >
           <span className="nav-item__hash">#</span>
@@ -39,6 +51,7 @@ export function RoomItem({ room, onJoin }) {
           </button>
         </div>
       </li>
+
 
       {showJoin && (
         <JoinRoomModal

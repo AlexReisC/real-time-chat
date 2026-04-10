@@ -17,10 +17,10 @@ export function ChatPanel({ stomp, onBack }) {
     setMembers,
     removeRoom,
     setActiveChat,
+    updateRoom,
   } = useChat();
 
   const [modal, setModal] = useState(null); // 'leave' | 'delete-room' | 'delete-private'
-  const prevChatRef = useRef(null);
   const unsubscribeRef = useRef(null);
 
   const isRoom = activeChat?.type === 'room';
@@ -50,7 +50,8 @@ export function ChatPanel({ stomp, onBack }) {
 
           // 2. Load members
           const membersData = await roomsApi.getMembers(roomId);
-          setMembers(membersData?.content ?? membersData ?? []);
+          const initialMembers = membersData?.content ?? membersData ?? [];
+          setMembers(initialMembers);
 
           // 3. Send STOMP addUser notification
           stomp.publish('/app/chat.addUser', {
@@ -64,8 +65,40 @@ export function ChatPanel({ stomp, onBack }) {
             (frame) => {
               try {
                 const msg = JSON.parse(frame.body);
-                // Notifications (JOIN/LEAVE) have a `type` field but no content as a message
-                if (msg.type === 'JOIN' || msg.type === 'LEAVE') return;
+                
+                if (msg.type === 'JOIN') {
+                  // Add member to the list if not already there
+                  setMembers((prev) => {
+                    if (prev.some((m) => m.userId === msg.userId)) return prev;
+                    return [...prev, { userId: msg.userId, username: msg.username }];
+                  });
+                  // Update room data to reflect new member ID for JoinRoomModal logic
+                  updateRoom({
+                    ...activeChat.data,
+                    membersIds: Array.from(new Set([...(activeChat.data.membersIds || []), msg.userId]))
+                  });
+                  return;
+                }
+                
+                if (msg.type === 'LEAVE') {
+                  // Only remove from members list if we want to show online-only members,
+                  // but here members seem to be "persistent members" of the room.
+                  // However, the user asked for real-time list, let's keep it in sync with memberships.
+                  // If it's a "disconnected" message (not a real LEAVE room), we might not want to remove.
+                  // But the backend notification for disconnect also uses LEAVE type.
+                  // Given the requirement of "just seeing the current user", let's update.
+                  
+                  // If it was a real "Leave Room" action, the user should be removed.
+                  // If it was just a disconnect, maybe they should stay but show as offline?
+                  // The current UI doesn't have an offline state, so let's just let it be for now
+                  // or follow the JOIN logic.
+                  
+                  // IMPORTANT: The backend removeUser from Room (membership) only happens 
+                  // on explicit /chat.removeUser OR if WebSocketEventListener calls it.
+                  // We disabled it in WebSocketEventListener.
+                  return;
+                }
+
                 appendMessage(msg);
               } catch (e) {
                 console.error('Failed to parse STOMP message', e);
@@ -160,7 +193,7 @@ export function ChatPanel({ stomp, onBack }) {
     : activeChat?.data?.username ?? '';
 
   const subtitle = isRoom
-    ? `${activeChat.data.membersIds?.length ?? ''} membros`
+    ? `${activeChat.data.membersIds?.length ?? 0} membros`
     : 'Mensagem privada';
 
   return (

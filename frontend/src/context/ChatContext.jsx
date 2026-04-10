@@ -19,6 +19,16 @@ function reducer(state, action) {
     case 'ADD_ROOM':
       return { ...state, rooms: [action.room, ...state.rooms] };
 
+    case 'UPDATE_ROOM':
+      return {
+        ...state,
+        rooms: state.rooms.map((r) => (r.id === action.room.id ? action.room : r)),
+        activeChat:
+          state.activeChat?.type === 'room' && state.activeChat.data.id === action.room.id
+            ? { ...state.activeChat, data: action.room }
+            : state.activeChat,
+      };
+
     case 'REMOVE_ROOM':
       return {
         ...state,
@@ -86,6 +96,7 @@ export function ChatProvider({ children }) {
 
   const setRooms = useCallback((rooms) => dispatch({ type: 'SET_ROOMS', rooms }), []);
   const addRoom = useCallback((room) => dispatch({ type: 'ADD_ROOM', room }), []);
+  const updateRoom = useCallback((room) => dispatch({ type: 'UPDATE_ROOM', room }), []);
   const removeRoom = useCallback((roomId) => dispatch({ type: 'REMOVE_ROOM', roomId }), []);
 
   const setPrivates = useCallback((privates) => dispatch({ type: 'SET_PRIVATES', privates }), []);
@@ -122,6 +133,7 @@ export function ChatProvider({ children }) {
         ...state,
         setRooms,
         addRoom,
+        updateRoom,
         removeRoom,
         setPrivates,
         removePrivate,

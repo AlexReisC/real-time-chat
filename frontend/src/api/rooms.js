@@ -13,7 +13,7 @@ export const roomsApi = {
   delete: (roomId) =>
     requestJson(`/rooms/${roomId}`, { method: 'DELETE' }),
 
-  getMembers: (roomId, page = 0, size = 100) =>
+  getMembers: (roomId, page = 0, size = 50) =>
     requestJson(`/rooms/${roomId}/members?page=${page}&size=${size}`),
 
   addMember: (roomId) =>
