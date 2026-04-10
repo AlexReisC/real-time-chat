@@ -2,6 +2,7 @@ package chat.chat_service.controller;
 
 import chat.chat_service.dto.request.CreateRoomDTO;
 import chat.chat_service.dto.response.PageResponseDTO;
+import chat.chat_service.dto.response.RoomMemberDTO;
 import chat.chat_service.dto.response.UserNotificationResponseDTO;
 import chat.chat_service.model.NotificationType;
 import chat.chat_service.model.Room;
@@ -54,12 +55,12 @@ public class RoomController {
     }
 
     @GetMapping("/{roomId}/members")
-    public ResponseEntity<PageResponseDTO<String>> listAllMembers(
+    public ResponseEntity<PageResponseDTO<RoomMemberDTO>> listRoomMembers(
         @PathVariable @NotBlank(message = "O ID da sala é obrigatório") String roomId,
         @Min(value = 0) @Max(value = 100) @RequestParam(defaultValue = "0") int page,
         @Min(value = 1) @Max(value = 100) @RequestParam(defaultValue = "20") int size
     ) {
-        PageResponseDTO<String> membersPage = roomService.listAllMembersByRoom(roomId, PageRequest.of(page, size));
+        PageResponseDTO<RoomMemberDTO> membersPage = roomService.listAllUsersByRoom(roomId, PageRequest.of(page, size));
         return ResponseEntity.ok(membersPage);
     }
 
