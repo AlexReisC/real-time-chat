@@ -61,7 +61,7 @@ public class AuthService {
             var saved = userRepository.save(user);
             
             String redisKey = "user:" + saved.getId() + ":username";
-            redisTemplate.opsForValue().set(redisKey, saved.getUsername());
+            redisTemplate.opsForValue().set(redisKey, saved.getDisplayName());
 
             return issueTokens(saved);
         } catch (DataIntegrityViolationException e) {

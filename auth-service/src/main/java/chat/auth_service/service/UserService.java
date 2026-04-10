@@ -46,7 +46,7 @@ public class UserService {
         User updatedUser = repository.save(user);
 
         String redisKey = "user:" + updatedUser.getId() + ":username";
-        redisTemplate.opsForValue().set(redisKey, req.username());
+        redisTemplate.opsForValue().set(redisKey, updatedUser.getDisplayName());
 
         return updatedUser;
     }
