@@ -20,6 +20,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,13 +44,15 @@ public class MessageService {
     private static final Logger logger = LoggerFactory.getLogger(MessageService.class);
     private final MongoTemplate mongoTemplate;
     private final ObjectMapper objectMapper;
+    private final StringRedisTemplate stringRedisTemplate;
 
-    public MessageService(MessageRepository messageRepository, RoomService roomService, RedisTemplate<String, Object> redisTemplate, MongoTemplate mongoTemplate, ObjectMapper objectMapper) {
+    public MessageService(MessageRepository messageRepository, RoomService roomService, RedisTemplate<String, Object> redisTemplate, MongoTemplate mongoTemplate, ObjectMapper objectMapper, StringRedisTemplate stringRedisTemplate) {
         this.messageRepository = messageRepository;
         this.roomService = roomService;
         this.redisTemplate = redisTemplate;
         this.mongoTemplate = mongoTemplate;
         this.objectMapper = objectMapper;
+        this.stringRedisTemplate = stringRedisTemplate;
     }
 
     public ResponseMessageDTO savePublicMessage(PublicMessageDTO messageDTO, String senderId, String senderUsername){
@@ -281,7 +284,7 @@ public class MessageService {
                 processedContacts.add(contactId);
                 
                 String redisKey = "user:" + contactId + ":username";
-                String contactUsername = (String) redisTemplate.opsForValue().get(redisKey);
+                String contactUsername = stringRedisTemplate.opsForValue().get(redisKey);
 
                 if (contactUsername == null) {
                     contactUsername = "Utilizador Desconhecido"; 
