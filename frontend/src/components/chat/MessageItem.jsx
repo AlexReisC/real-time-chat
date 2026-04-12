@@ -1,4 +1,5 @@
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useChat } from '../../context/ChatContext.jsx';
 import { Avatar } from '../Avatar.jsx';
 
 function formatTime(timestamp) {
@@ -9,14 +10,29 @@ function formatTime(timestamp) {
 
 export function MessageItem({ message }) {
   const { user } = useAuth();
+  const { setActiveChat } = useChat();
   const isOwn = message.senderId === user?.id;
+
+  const handleStartPrivate = () => {
+    if (isOwn) return;
+    setActiveChat({
+      type: 'private',
+      data: { userId: message.senderId, username: message.senderUsername }
+    });
+  };
 
   return (
     <li className={`message ${isOwn ? 'message--own' : ''}`}>
-      {!isOwn && <Avatar name={message.senderUsername} size="sm" />}
+      {!isOwn && (
+        <div onClick={handleStartPrivate} className="message__avatar--clickable">
+          <Avatar name={message.senderUsername} size="sm" />
+        </div>
+      )}
       <div className="message__body">
         {!isOwn && (
-          <span className="message__sender">{message.senderUsername}</span>
+          <span className="message__sender message__sender--clickable" onClick={handleStartPrivate}>
+            {message.senderUsername}
+          </span>
         )}
         <div className="message__bubble">
           <p className="message__text">{message.content}</p>
