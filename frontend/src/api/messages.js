@@ -14,5 +14,5 @@ export const messagesApi = {
     requestJson(`/messages/private/${targetUserId}/history?page=${page}&size=${size}`),
 
   listPrivateConversations: () =>
-    requestJson('/private/conversations'),
+    requestJson('/messages/private/conversations'),
 };
