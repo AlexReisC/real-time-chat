@@ -11,7 +11,7 @@ export function UserFooter() {
     <>
       <div className="user-footer">
         <div className="user-footer__info">
-          <Avatar name={user?.displayName} size="sm" />
+          <Avatar name={user?.username} size="sm" />
           <div className="user-footer__text">
             <span className="user-footer__name">{user?.displayName}</span>
             <span className="user-footer__email">{user?.email}</span>
