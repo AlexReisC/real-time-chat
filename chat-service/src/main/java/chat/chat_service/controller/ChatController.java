@@ -49,7 +49,7 @@ public class ChatController {
 
         String userId = (String) headerAccessor.getSessionAttributes().get("userId");
         String redisKey = "user:" + userId + ":username";
-        String username = (String) redisTemplate.opsForValue().get(redisKey);
+        String username = redisTemplate.opsForValue().get(redisKey);
 
         String roomId = notificationDTO.roomId();
         headerAccessor.getSessionAttributes().put("roomId", roomId);
@@ -74,7 +74,7 @@ public class ChatController {
 
         String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
         String redisKey = "user:" + senderId + ":username";
-        String senderUsername = (String) redisTemplate.opsForValue().get(redisKey);
+        String senderUsername = redisTemplate.opsForValue().get(redisKey);
         
         String roomId = notificationDTO.roomId();
 
@@ -97,7 +97,7 @@ public class ChatController {
     public void sendPublicMessage(@Valid @Payload PublicMessageDTO chatMessageDTO, SimpMessageHeaderAccessor headerAccessor){
         String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
         String redisKey = "user:" + senderId + ":username";
-        String senderUsername = (String) redisTemplate.opsForValue().get(redisKey);
+        String senderUsername = redisTemplate.opsForValue().get(redisKey);
 
         logger.info("Mensagem recebida de {} na sala {}", senderUsername, chatMessageDTO.roomId());
 
@@ -122,7 +122,7 @@ public class ChatController {
     public void sendPrivateMessage(@Valid @Payload PrivateMessageDTO messageDTO, SimpMessageHeaderAccessor headerAccessor) {
         String senderId = (String) headerAccessor.getSessionAttributes().get("userId");
         String redisKey = "user:" + senderId + ":username";
-        String senderUsername = (String) redisTemplate.opsForValue().get(redisKey);
+        String senderUsername = redisTemplate.opsForValue().get(redisKey);
 
         logger.info("Mensagem enviada de {} para {}", senderUsername, messageDTO.recipientId());
 
