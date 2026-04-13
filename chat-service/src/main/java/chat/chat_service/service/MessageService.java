@@ -70,23 +70,30 @@ public class MessageService {
     }
 
     private void cacheMessage(ResponseMessageDTO message) {
-        String cacheKey = "room:" + message.roomId() + ":messages";
-        
-        if (message.type() != MessageType.ROOM || message.roomId() == null) {
-            String privateConversationKey = getPrivateConversationKey(message.senderId(), message.recipientId());
-            cacheKey = cacheKey.replace("room:", privateConversationKey);
-        }
-        
+        String cacheKey = resolveCacheKey(message);
+
         redisTemplate.opsForList().rightPush(cacheKey, message);
         redisTemplate.opsForList().trim(cacheKey, -MAX_CACHED_MESSAGES, -1);
         redisTemplate.expire(cacheKey, Duration.ofDays(1));
     }
 
-    private String getPrivateConversationKey(String userId1, String userId2) {
+    String resolveCacheKey(ResponseMessageDTO message) {
+        if (message.type() == MessageType.ROOM && message.roomId() != null) {
+            return "room:" + message.roomId() + ":messages";
+        }
+
+        return getPrivateConversationKey(message.senderId(), message.recipientId());
+    }
+
+    String getPrivateConversationKey(String userId1, String userId2) {
         // Ordena os IDs para garantir que a chave é a mesma, independentemente de quem envia
         String userA = userId1.compareTo(userId2) < 0 ? userId1 : userId2;
         String userB = userId1.compareTo(userId2) < 0 ? userId2 : userId1;
         return "private:" + userA + ":" + userB + ":messages";
+    }
+
+    String getLegacyPrivateConversationCacheKey(String userId1, String userId2) {
+        return getPrivateConversationKey(userId1, userId2) + "null:messages";
     }
 
     private Message fromChatMessagetoEntity(PublicMessageDTO messageDTO, String senderId, String senderUsername) {
@@ -135,7 +142,7 @@ public class MessageService {
 
         ResponseMessageDTO savedDto = toResponseDTO(savedMessage);
 
-        cacheMessage(savedDto);
+        refreshPrivateConversationCache(savedDto.senderId(), savedDto.recipientId());
         return savedDto;
     }
 
@@ -197,6 +204,31 @@ public class MessageService {
                 .map(this::toResponseDTO)
                 .collect(Collectors.toList())
         );
+    }
+
+    private void refreshPrivateConversationCache(String userId1, String userId2) {
+        String cacheKey = getPrivateConversationKey(userId1, userId2);
+        String legacyCacheKey = getLegacyPrivateConversationCacheKey(userId1, userId2);
+
+        redisTemplate.delete(cacheKey);
+        redisTemplate.delete(legacyCacheKey);
+
+        List<ResponseMessageDTO> recentMessages = messageRepository.findTop50PrivateConversation(userId1, userId2).stream()
+                .limit(MAX_CACHED_MESSAGES)
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
+
+        Collections.reverse(recentMessages);
+
+        if (recentMessages.isEmpty()) {
+            return;
+        }
+
+        for (ResponseMessageDTO msg : recentMessages) {
+            redisTemplate.opsForList().rightPush(cacheKey, msg);
+        }
+        redisTemplate.opsForList().trim(cacheKey, -MAX_CACHED_MESSAGES, -1);
+        redisTemplate.expire(cacheKey, Duration.ofDays(1));
     }
 
     private List<ResponseMessageDTO> fetchMessagesWithLock(String cacheKey, String lockKey, Supplier<List<ResponseMessageDTO>> dbSupplier) {

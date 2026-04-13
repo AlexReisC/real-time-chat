@@ -10,6 +10,9 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+    @Value("${chat.websocket.broker-type:relay}")
+    private String brokerType;
+
     @Value("${relay.host}")
     private String relayHost;
 
@@ -23,20 +26,26 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private String rabbitPass;
 
     private final UserHandshakeInterceptor userHandshakeInterceptor;
+    private final UserHandshakeHandler userHandshakeHandler;
 
-    public WebSocketConfig(UserHandshakeInterceptor userHandshakeInterceptor) {
+    public WebSocketConfig(UserHandshakeInterceptor userHandshakeInterceptor, UserHandshakeHandler userHandshakeHandler) {
         this.userHandshakeInterceptor = userHandshakeInterceptor;
+        this.userHandshakeHandler = userHandshakeHandler;
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableStompBrokerRelay("/topic", "/queue")
-                .setRelayHost(relayHost)
-                .setRelayPort(relayPort)
-                .setClientLogin(rabbitUser)
-                .setClientPasscode(rabbitPass)
-                .setSystemLogin(rabbitUser)
-                .setSystemPasscode(rabbitPass);
+        if ("simple".equalsIgnoreCase(brokerType)) {
+            config.enableSimpleBroker("/topic", "/queue");
+        } else {
+            config.enableStompBrokerRelay("/topic", "/queue")
+                    .setRelayHost(relayHost)
+                    .setRelayPort(relayPort)
+                    .setClientLogin(rabbitUser)
+                    .setClientPasscode(rabbitPass)
+                    .setSystemLogin(rabbitUser)
+                    .setSystemPasscode(rabbitPass);
+        }
         
         config.setApplicationDestinationPrefixes("/app"); // for controller endpoint
         config.setUserDestinationPrefix("/user"); // private messages
@@ -46,6 +55,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws/chat")
                 .setAllowedOriginPatterns("*")
+                .setHandshakeHandler(userHandshakeHandler)
                 .addInterceptors(userHandshakeInterceptor);
     }
 }
