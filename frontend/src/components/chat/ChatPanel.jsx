@@ -30,11 +30,7 @@ export function ChatPanel({ stomp, onBack }) {
   useEffect(() => {
     if (!activeChat || !stomp) return;
 
-    // Unsubscribe previous subscription
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
-    }
+    let isCancelled = false;
 
     async function setup() {
       try {
@@ -43,6 +39,8 @@ export function ChatPanel({ stomp, onBack }) {
 
           // 1. Load cached messages (last 50)
           const cached = await messagesApi.loadRoomCache(roomId);
+          if (isCancelled) return;
+          
           const sorted = [...(cached ?? [])].sort(
             (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
           );
@@ -50,6 +48,8 @@ export function ChatPanel({ stomp, onBack }) {
 
           // 2. Load members
           const membersData = await roomsApi.getMembers(roomId);
+          if (isCancelled) return;
+          
           const initialMembers = membersData?.content ?? membersData ?? [];
           setMembers(initialMembers);
 
@@ -81,21 +81,6 @@ export function ChatPanel({ stomp, onBack }) {
                 }
                 
                 if (msg.type === 'LEAVE') {
-                  // Only remove from members list if we want to show online-only members,
-                  // but here members seem to be "persistent members" of the room.
-                  // However, the user asked for real-time list, let's keep it in sync with memberships.
-                  // If it's a "disconnected" message (not a real LEAVE room), we might not want to remove.
-                  // But the backend notification for disconnect also uses LEAVE type.
-                  // Given the requirement of "just seeing the current user", let's update.
-                  
-                  // If it was a real "Leave Room" action, the user should be removed.
-                  // If it was just a disconnect, maybe they should stay but show as offline?
-                  // The current UI doesn't have an offline state, so let's just let it be for now
-                  // or follow the JOIN logic.
-                  
-                  // IMPORTANT: The backend removeUser from Room (membership) only happens 
-                  // on explicit /chat.removeUser OR if WebSocketEventListener calls it.
-                  // We disabled it in WebSocketEventListener.
                   return;
                 }
 
@@ -112,6 +97,8 @@ export function ChatPanel({ stomp, onBack }) {
 
           // 1. Load cached messages
           const cached = await messagesApi.loadPrivateCache(targetUserId);
+          if (isCancelled) return;
+
           const sorted = [...(cached ?? [])].sort(
             (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
           );
@@ -136,13 +123,16 @@ export function ChatPanel({ stomp, onBack }) {
           unsubscribeRef.current = unsub;
         }
       } catch (err) {
-        console.error('ChatPanel setup error', err);
+        if (!isCancelled) {
+          console.error('ChatPanel setup error', err);
+        }
       }
     }
 
     setup();
 
     return () => {
+      isCancelled = true;
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;

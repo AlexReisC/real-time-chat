@@ -1,13 +1,14 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useMemo } from 'react';
 import { Client } from '@stomp/stompjs';
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:8080/ws/chat';
 
 export function useStomp(token) {
   const clientRef = useRef(null);
-  const subscriptionsRef = useRef(new Map()); // destination → StompSubscription
+  const subscriptionsRef = useRef(new Map()); // id → StompSubscription
+  const pendingRef = useRef(new Map()); // id → { destination, callback }
   const connectedRef = useRef(false);
-  const pendingRef = useRef([]); // callbacks queued before connection
+  const subCounterRef = useRef(0);
 
   useEffect(() => {
     if (!token) return;
@@ -18,14 +19,18 @@ export function useStomp(token) {
       onConnect: () => {
         connectedRef.current = true;
         // flush any subscriptions requested before connection
-        pendingRef.current.forEach(({ destination, callback }) => {
+        pendingRef.current.forEach(({ destination, callback }, id) => {
           const sub = client.subscribe(destination, callback);
-          subscriptionsRef.current.set(destination, sub);
+          subscriptionsRef.current.set(id, sub);
         });
-        pendingRef.current = [];
+        pendingRef.current.clear();
       },
       onDisconnect: () => {
         connectedRef.current = false;
+        // StompJS handles unsubscribing on disconnect, 
+        // but we clear our refs to stay in sync with the new session
+        subscriptionsRef.current.clear();
+        pendingRef.current.clear();
       },
       onStompError: (frame) => {
         console.error('STOMP error', frame);
@@ -37,39 +42,45 @@ export function useStomp(token) {
 
     return () => {
       connectedRef.current = false;
-      subscriptionsRef.current.clear();
+      const currentSubs = subscriptionsRef.current;
+      const currentPending = pendingRef.current;
+      currentSubs.clear();
+      currentPending.clear();
       client.deactivate();
     };
   }, [token]);
 
   const subscribe = useCallback((destination, callback) => {
-    // Unsubscribe if already subscribed to this destination
-    if (subscriptionsRef.current.has(destination)) {
-      subscriptionsRef.current.get(destination).unsubscribe();
-      subscriptionsRef.current.delete(destination);
-    }
+    const subId = ++subCounterRef.current;
 
     if (connectedRef.current && clientRef.current) {
       const sub = clientRef.current.subscribe(destination, callback);
-      subscriptionsRef.current.set(destination, sub);
+      subscriptionsRef.current.set(subId, sub);
     } else {
-      // Queue for when connection is ready
-      pendingRef.current.push({ destination, callback });
+      pendingRef.current.set(subId, { destination, callback });
     }
 
     return () => {
-      if (subscriptionsRef.current.has(destination)) {
-        subscriptionsRef.current.get(destination).unsubscribe();
-        subscriptionsRef.current.delete(destination);
+      // Remove from pending if it hasn't connected yet
+      if (pendingRef.current.has(subId)) {
+        pendingRef.current.delete(subId);
+      }
+      
+      // Unsubscribe if it's already active
+      if (subscriptionsRef.current.has(subId)) {
+        const sub = subscriptionsRef.current.get(subId);
+        // Only unsubscribe if the client is still connected/active
+        // to avoid "No underlying STOMP connection" errors
+        if (connectedRef.current && clientRef.current?.connected) {
+          try {
+            sub.unsubscribe();
+          } catch (e) {
+            console.warn('Failed to unsubscribe', e);
+          }
+        }
+        subscriptionsRef.current.delete(subId);
       }
     };
-  }, []);
-
-  const unsubscribe = useCallback((destination) => {
-    if (subscriptionsRef.current.has(destination)) {
-      subscriptionsRef.current.get(destination).unsubscribe();
-      subscriptionsRef.current.delete(destination);
-    }
   }, []);
 
   const publish = useCallback((destination, body) => {
@@ -83,5 +94,5 @@ export function useStomp(token) {
     });
   }, []);
 
-  return { subscribe, unsubscribe, publish };
+  return useMemo(() => ({ subscribe, publish }), [subscribe, publish]);
 }

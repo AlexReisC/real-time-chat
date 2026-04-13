@@ -37,7 +37,9 @@ export function ChatPage() {
       try {
         const err = JSON.parse(frame.body);
         console.error('Server error:', err.message);
-      } catch {}
+      } catch (e) {
+        console.error('Failed to parse error message', e);
+      }
     });
     return unsub;
   }, [stomp]);
